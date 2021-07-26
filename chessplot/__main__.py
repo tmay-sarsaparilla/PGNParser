@@ -14,7 +14,7 @@ def main():
     white_to_move = True
     board = Board()
     move_count = 0
-    print(board)
+    board.display()
     for pair in move_pairs:
         move_count += 1
         moves = pair.split(" ")
@@ -36,6 +36,7 @@ def main():
 
             board.execute_move(move_string=move, white_to_move=white_to_move)
             print(board)
+            # board.display()
             if white_to_move:
                 white_to_move = False
             else:

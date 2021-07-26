@@ -1,6 +1,7 @@
 
 import numpy as np
 import re
+from PIL import Image, ImageDraw, ImageFont
 
 
 class Piece:
@@ -19,11 +20,27 @@ class Piece:
         "K": __bishop_move_metric + __rook_move_metric
     }
 
+    __unicode_lookup = {
+        "K": "♔",
+        "Q": "♕",
+        "R": "♖",
+        "B": "♗",
+        "N": "♘",
+        "P": "♙",
+        "k": "♚",
+        "q": "♛",
+        "r": "♜",
+        "b": "♝",
+        "n": "♞",
+        "p": "♟︎"
+    }
+
     def __init__(self, name, row, col):
-        assert name.upper() in self.__valid_piece_names, f"{name} is not a valid piece name"
+        assert name.upper() in Piece.__valid_piece_names, f"{name} is not a valid piece name"
         self._name = name
         self._is_white = True if name == name.upper() else False
         self._rank = name.upper()
+        self._unicode = Piece.__unicode_lookup[self.rank]
         self.position = Position(row=row, col=col)
         self.move_metric = self.set_move_metric()
         self._has_moved = False
@@ -45,6 +62,10 @@ class Piece:
     def rank(self):
         return self._rank
 
+    @property
+    def unicode(self):
+        return self._unicode
+
     def set_move_metric(self):
         """Set the list of move metrics for the piece"""
         if self.rank == "P":
@@ -53,7 +74,7 @@ class Piece:
             else:
                 return [(-1, 0)]
         else:
-            return self.__move_metrics[self.rank]
+            return Piece.__move_metrics[self.rank]
 
     def update_position(self, row, col):
         """Update the position of a piece with a new position"""
@@ -245,9 +266,6 @@ class Board:
         new_col_str = None
         new_row_str = None
 
-        for char in ["+", "++", "#"]:
-            move_string = move_string.replace(char, "")
-
         if re.match("[a-h][1-8]", string=move_string):  # pawn move
             piece_rank = "P"
             new_col_str = move_string[0]
@@ -351,3 +369,29 @@ class Board:
                 return
 
         raise ValueError(f"Invalid move: {move_string}")
+
+    def display(self):
+        im = Image.new(mode="RGBA", size=(600, 600), color="white")
+        unicode_font = ImageFont.truetype("DejaVuSans.ttf", 50)
+        draw = ImageDraw.ImageDraw(im=im)
+
+        x_origin, y_origin = 60, 60
+
+        for i in range(0, 8):
+            for j in range(0, 8):
+                piece = self.grid[7-i, 7-j]
+                x = x_origin + 60 * j
+                y = y_origin + 60 * i
+                square_colour = "#e1e1e5" if (i + j) % 2 == 0 else "#954601"
+                draw.rectangle(xy=((x, y), (x + 60, y + 60)), fill=square_colour)
+                if piece is not None:
+                    piece_colour = "white" if piece.is_white else "black"
+                    draw.text(
+                        xy=(x_origin + 60 * j + 7, y_origin + 60 * i),
+                        text=piece.unicode,
+                        align="center",
+                        font=unicode_font,
+                        fill=piece_colour
+                    )
+
+        im.show()
