@@ -195,6 +195,7 @@ class Board:
     def __init__(self, fen=__default_fen):
         self.fen = fen
         self.grid = self.generate_board()
+        self.images = [self.generate_image()]
 
     def __repr__(self):
         print_grid = np.vstack(([["h", "g", "f", "e", "d", "c", "b", "a"]], self.grid))
@@ -370,28 +371,89 @@ class Board:
 
         raise ValueError(f"Invalid move: {move_string}")
 
-    def display(self):
-        im = Image.new(mode="RGBA", size=(600, 600), color="white")
+    def generate_image(self, move_string=""):
+        """Generate an image of the board in its current state"""
+        image = Image.new(mode="RGBA", size=(600, 700), color="white")
         unicode_font = ImageFont.truetype("DejaVuSans.ttf", 50)
-        draw = ImageDraw.ImageDraw(im=im)
+        title_font = ImageFont.truetype("arial.ttf", 30)
+        move_text_font = ImageFont.truetype("arial.ttf", 20)
+        draw = ImageDraw.ImageDraw(im=image)
 
-        x_origin, y_origin = 60, 60
+        x_origin, y_origin = 60, 160
+
+        draw.text(  # title text
+            xy=(x_origin + 240, y_origin - 120),
+            text="White - Black",
+            anchor="ms",
+            align="center",
+            font=title_font,
+            fill="black"
+        )
+
+        draw.text(  # move text
+            xy=(x_origin, y_origin - 40),
+            text=move_string,
+            align="left",
+            font=move_text_font,
+            fill="black"
+        )
 
         for i in range(0, 8):
             for j in range(0, 8):
                 piece = self.grid[7-i, 7-j]
                 x = x_origin + 60 * j
                 y = y_origin + 60 * i
-                square_colour = "#e1e1e5" if (i + j) % 2 == 0 else "#954601"
+                black_square_colour = "#276996"
+                white_square_colour = "#e2e7ee"
+                square_colour = black_square_colour if (i + j) % 2 == 0 else white_square_colour
                 draw.rectangle(xy=((x, y), (x + 60, y + 60)), fill=square_colour)
                 if piece is not None:
                     piece_colour = "white" if piece.is_white else "black"
                     draw.text(
-                        xy=(x_origin + 60 * j + 7, y_origin + 60 * i),
+                        xy=(x_origin + 60 * j + 30, y_origin + 60 * i + 30),
                         text=piece.unicode,
+                        anchor="mm",
                         align="center",
                         font=unicode_font,
-                        fill=piece_colour
+                        fill=piece_colour,
+                        stroke_width=1
+                    )
+                if i == 0:
+                    draw.text(
+                        xy=(x_origin - 30, y_origin + 60 * j + 30),
+                        text="12345678"[7-j],
+                        anchor="mm",
+                        align="right",
+                        font=move_text_font,
+                        fill="black",
+                        stroke_width=0
+                    )
+                if j == 7:
+                    draw.text(
+                        xy=(x_origin + 60 * i + 30, y_origin + 60 * 8 + 30),
+                        text="abcdefgh"[i],
+                        anchor="mm",
+                        align="center",
+                        font=move_text_font,
+                        fill="black",
+                        stroke_width=0
                     )
 
-        im.show()
+        return image
+
+    def add_image(self, move_string=""):
+        """Add to the list of board images"""
+        self.images.append(self.generate_image(move_string=move_string))
+        return
+
+    def create_gif(self):
+        """Create an animated gif from a list of images"""
+        save_images = self.images + [self.images[-1]]  # add last element twice before loop restarts
+        save_images[0].save(
+            fp="test_chess_gif.gif",
+            save_all=True,
+            append_images=save_images[1:],
+            duration=1000,  # 1 second per loop
+            loop=0  # infinite loop
+        )
+        return

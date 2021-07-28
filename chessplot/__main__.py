@@ -14,7 +14,6 @@ def main():
     white_to_move = True
     board = Board()
     move_count = 0
-    board.display()
     for pair in move_pairs:
         move_count += 1
         moves = pair.split(" ")
@@ -24,19 +23,19 @@ def main():
                 return
             elif move == "0-1":
                 print("Black wins")
+                board.create_gif()
                 return
             elif move == "½–½":
                 print("Draw")
                 return
 
             if white_to_move:
-                print(f"{move_count}. {move}")
+                move_string = f"{move_count}. {move}"
             else:
-                print(f"{move_count}... {move}")
+                move_string = f"{move_count}... {move}"
 
             board.execute_move(move_string=move, white_to_move=white_to_move)
-            print(board)
-            # board.display()
+            board.add_image(move_string=move_string)
             if white_to_move:
                 white_to_move = False
             else:

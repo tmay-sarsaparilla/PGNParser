@@ -75,3 +75,4 @@ fabric.properties
 /venv/
 /.idea
 /pycache
+/chessplot/test_chess_gif.gif
