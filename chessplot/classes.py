@@ -192,8 +192,17 @@ class Board:
 
     __default_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
 
-    def __init__(self, fen=__default_fen):
-        self.fen = fen
+    def __init__(self, tags):
+        (
+            self.fen,
+            self.event,
+            self.site,
+            self.date,
+            self.event_round,
+            self.white,
+            self.black,
+            self.result
+        ) = self.get_metadata(tags=tags)
         self.grid = self.generate_board()
         self.images = [self.generate_image()]
 
@@ -201,6 +210,25 @@ class Board:
         print_grid = np.vstack(([["h", "g", "f", "e", "d", "c", "b", "a"]], self.grid))
         print_grid = np.hstack((print_grid, [[" "], ["1"], ["2"], ["3"], ["4"], ["5"], ["6"], ["7"], ["8"]]))
         return str(np.flip(print_grid)).replace("None", " - ") + "\n"
+
+    @staticmethod
+    def get_metadata(tags):
+        """Get metadata from a set of tags"""
+        def get_tag(tag_key, default_value=""):
+            try:
+                return tags[tag_key]
+            except KeyError:
+                return default_value
+
+        fen = get_tag(tag_key="FEN", default_value=Board.__default_fen)
+        event = get_tag(tag_key="Event")
+        site = get_tag(tag_key="Site")
+        date = get_tag(tag_key="Date")
+        event_round = get_tag(tag_key="Round")
+        white = get_tag(tag_key="White", default_value="Unknown")
+        black = get_tag(tag_key="Black", default_value="Unknown")
+        result = get_tag(tag_key="Result")
+        return fen, event, site, date, event_round, white, black, result
 
     def generate_board(self):
         """Generate a board from a given FEN code"""
@@ -398,6 +426,7 @@ class Board:
         image = Image.new(mode="RGBA", size=(600, 700), color="white")
         unicode_font = ImageFont.truetype("seguisym.ttf", 50)
         title_font = ImageFont.truetype("arial.ttf", 30)
+        sub_title_font = ImageFont.truetype("arial.ttf", 15)
         move_text_font = ImageFont.truetype("arial.ttf", 20)
         black_square_colour = "#276996"
         white_square_colour = "#e2e7ee"
@@ -407,10 +436,19 @@ class Board:
 
         draw.text(  # title text
             xy=(x_origin + 240, y_origin - 120),
-            text="White - Black",
+            text=f"{self.white} - {self.black}",
             anchor="ms",
             align="center",
             font=title_font,
+            fill="black"
+        )
+
+        draw.text(  # sub-title text
+            xy=(x_origin + 240, y_origin - 100),
+            text=f"{self.site}, {self.date}",
+            anchor="ms",
+            align="center",
+            font=sub_title_font,
             fill="black"
         )
 
