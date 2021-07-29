@@ -32,7 +32,7 @@ class Piece:
         "r": "♜",
         "b": "♝",
         "n": "♞",
-        "p": "♟︎"
+        "p": "♟"
     }
 
     def __init__(self, name, row, col):
@@ -40,7 +40,7 @@ class Piece:
         self._name = name
         self._is_white = True if name == name.upper() else False
         self._rank = name.upper()
-        self._unicode = Piece.__unicode_lookup[self.rank]
+        self._unicode = Piece.__unicode_lookup[self.name]
         self.position = Position(row=row, col=col)
         self.move_metric = self.set_move_metric()
         self._has_moved = False
@@ -220,14 +220,19 @@ class Board:
 
         return board
 
-    def move_piece(self, piece, row, col):
+    def move_piece(self, piece, row, col, promoted_piece_rank=None):
         """Move a piece on the grid"""
         current_row = piece.position.row
         current_col = piece.position.col
 
         self.grid[current_row, current_col] = None
         piece.update_position(row=row, col=col)
-        self.grid[row, col] = piece
+        if promoted_piece_rank is not None:  # if pawn promotion, create a new piece at the new position
+            new_piece_name = promoted_piece_rank.lower() if not piece.is_white else promoted_piece_rank
+            new_piece = Piece(name=new_piece_name, row=row, col=col)
+            self.grid[row, col] = new_piece
+        else:  # otherwise move the existing piece
+            self.grid[row, col] = piece
         return
 
     def castle(self, white_to_move, castle_king_side):
@@ -266,6 +271,7 @@ class Board:
         piece_row = None
         new_col_str = None
         new_row_str = None
+        promoted_piece_rank = None
 
         if re.match("[a-h][1-8]", string=move_string):  # pawn move
             piece_rank = "P"
@@ -276,6 +282,17 @@ class Board:
             piece_col = move_string[0]
             new_col_str = move_string[2]
             new_row_str = move_string[3]
+        elif re.match("[a-h][1-8]=[NBRQ]", string=move_string):  # pawn promotion
+            piece_rank = "P"
+            new_col_str = move_string[0]
+            new_row_str = move_string[1]
+            promoted_piece_rank = move_string[3]
+        elif re.match("[a-h]x[a-h][1-8]=[NBRQ]", string=move_string):  # pawn promotion
+            piece_rank = "P"
+            piece_col = move_string[0]
+            new_col_str = move_string[2]
+            new_row_str = move_string[3]
+            promoted_piece_rank = move_string[5]
         elif re.match("[NBRQK][a-h][1-8]", string=move_string):  # piece move
             piece_rank = move_string[0]
             new_col_str = move_string[1]
@@ -344,7 +361,12 @@ class Board:
                     candidate_pieces.append(piece)
 
         if len(candidate_pieces) == 1:
-            self.move_piece(piece=candidate_pieces[0], row=new_row, col=new_col)
+            self.move_piece(
+                piece=candidate_pieces[0],
+                row=new_row,
+                col=new_col,
+                promoted_piece_rank=promoted_piece_rank
+            )
             return
         elif len(candidate_pieces) >= 2:
             if piece_row is not None and piece_col is not None:
@@ -352,21 +374,21 @@ class Board:
                     piece for piece in candidate_pieces
                     if piece.position.name == piece_col + piece_row
                 ]
-                self.move_piece(piece=piece, row=new_row, col=new_col)
+                self.move_piece(piece=piece, row=new_row, col=new_col, promoted_piece_rank=promoted_piece_rank)
                 return
             elif piece_row is not None:
                 piece, = [
                     piece for piece in candidate_pieces
                     if piece.position.row == int(row_names.index(piece_row))
                 ]
-                self.move_piece(piece=piece, row=new_row, col=new_col)
+                self.move_piece(piece=piece, row=new_row, col=new_col, promoted_piece_rank=promoted_piece_rank)
                 return
             elif piece_col is not None:
                 piece, = [
                     piece for piece in candidate_pieces
                     if piece.position.col == int(col_names.index(piece_col))
                 ]
-                self.move_piece(piece=piece, row=new_row, col=new_col)
+                self.move_piece(piece=piece, row=new_row, col=new_col, promoted_piece_rank=promoted_piece_rank)
                 return
 
         raise ValueError(f"Invalid move: {move_string}")
@@ -374,9 +396,11 @@ class Board:
     def generate_image(self, move_string=""):
         """Generate an image of the board in its current state"""
         image = Image.new(mode="RGBA", size=(600, 700), color="white")
-        unicode_font = ImageFont.truetype("DejaVuSans.ttf", 50)
+        unicode_font = ImageFont.truetype("seguisym.ttf", 50)
         title_font = ImageFont.truetype("arial.ttf", 30)
         move_text_font = ImageFont.truetype("arial.ttf", 20)
+        black_square_colour = "#276996"
+        white_square_colour = "#e2e7ee"
         draw = ImageDraw.ImageDraw(im=image)
 
         x_origin, y_origin = 60, 160
@@ -403,9 +427,7 @@ class Board:
                 piece = self.grid[7-i, 7-j]
                 x = x_origin + 60 * j
                 y = y_origin + 60 * i
-                black_square_colour = "#276996"
-                white_square_colour = "#e2e7ee"
-                square_colour = black_square_colour if (i + j) % 2 == 0 else white_square_colour
+                square_colour = white_square_colour if (i + j) % 2 == 0 else black_square_colour
                 draw.rectangle(xy=((x, y), (x + 60, y + 60)), fill=square_colour)
                 if piece is not None:
                     piece_colour = "white" if piece.is_white else "black"
@@ -415,8 +437,8 @@ class Board:
                         anchor="mm",
                         align="center",
                         font=unicode_font,
-                        fill=piece_colour,
-                        stroke_width=1
+                        fill="black",
+                        stroke_width=0
                     )
                 if i == 0:
                     draw.text(
