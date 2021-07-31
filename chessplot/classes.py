@@ -45,7 +45,7 @@ class Piece:
         self.position = Position(row=row, col=col)
         self.move_metric = self.set_move_metric()
         self._has_moved = False
-        self._position_history = [self.position]
+        self._position_history = [(0, self.position)]
 
     def __repr__(self):
         return repr(self.name)
@@ -78,10 +78,10 @@ class Piece:
         else:
             return Piece.__move_metrics[self.rank]
 
-    def update_position(self, row, col):
+    def update_position(self, row, col, move_number):
         """Update the position of a piece with a new position"""
         self.position = Position(row=row, col=col)
-        self._position_history.append(self.position)
+        self._position_history.append((move_number, self.position))
         self._has_moved = True
         return
 
@@ -118,10 +118,31 @@ class Piece:
 
             if position_inhabitant is None:  # if there is no piece, skip
                 continue
-            elif position_inhabitant.is_white != self.is_white:  # if the piece is of the opposite colour
-                situational_directions.append(direction)         # a capture is possible
+            if position_inhabitant.is_white != self.is_white:  # if the piece is of the opposite colour
+                situational_directions.append(direction)       # a capture is possible
 
-        # TODO: Implement en passant
+        # En passant only applies to pawns on the 6th row (for white) and the 3rd row (for black)
+        if (self.is_white and self.position.row != 5) or (not self.is_white and self.position.row != 2):
+            return situational_directions
+        for direction in capture_moves:
+            position = Position(  # check adjacent squares in the same column as the pawn
+                row=self.position.row,
+                col=self.position.col + direction[1]
+            )
+            if not position.is_legal:
+                continue
+            position_inhabitant = board[position.row, position.col]
+            if position_inhabitant is None:  # if there is no piece skip
+                continue
+            can_capture = (
+                    position_inhabitant.is_white != self.is_white  # opponent colour
+                    and position_inhabitant.rank == "P"  # is a pawn
+                    and len(position_inhabitant.position_history) == 2  # has only moved once
+                    and position_inhabitant.position_history[-1][0] == board.move_count  # has just moved
+            )
+            if can_capture:
+                if direction not in situational_directions:
+                    situational_directions.append(direction)
         return situational_directions
 
     def get_possible_positions(self, board):
@@ -212,6 +233,7 @@ class Board:
         ) = self.get_metadata(tags=tags)
         self.formatted_date = self.format_date()
         self.grid = self.generate_board()
+        self.move_count = 0
         self.images = [self.generate_image()]
 
     def __repr__(self):
@@ -277,13 +299,14 @@ class Board:
         current_col = piece.position.col
 
         self.grid[current_row, current_col] = None
-        piece.update_position(row=row, col=col)
+        piece.update_position(row=row, col=col, move_number=self.move_count)
         if promoted_piece_rank is not None:  # if pawn promotion, create a new piece at the new position
             new_piece_name = promoted_piece_rank.lower() if not piece.is_white else promoted_piece_rank
             new_piece = Piece(name=new_piece_name, row=row, col=col)
             self.grid[row, col] = new_piece
         else:  # otherwise move the existing piece
             self.grid[row, col] = piece
+        self.move_count += 1
         return
 
     def castle(self, white_to_move, castle_king_side):
