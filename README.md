@@ -13,7 +13,9 @@ The easiest way to install `chessplot` is using Pypi.
 
 To do this, first ensure that you have `pip` installed then run:
 
-`pip install git+www.github.com/tmay-sarsaparilla/PGNParser`
+```
+pip install chessplot
+```
 
 ## Usage:
 The core function of the package is `pgn_to_file`. This takes
