@@ -446,13 +446,14 @@ class Board:
 
     def generate_image(self, move_string=""):
         """Generate an image of the board in its current state"""
-        image = Image.new(mode="RGB", size=(600, 700), color="white")
+        square_width = 60
+        image = Image.new(mode="RGB", size=(square_width * 10, int(square_width * 11.667)), color="white")
         unicode_font = ImageFont.truetype("seguisym.ttf", 50)
         black_square_colour = "#276996"
         white_square_colour = "#e2e7ee"
         draw = ImageDraw.ImageDraw(im=image)
 
-        x_origin, y_origin = 60, 160
+        x_origin, y_origin = square_width, square_width * 2.667
 
         # title text
         title_font = ImageFont.truetype("arial.ttf", 30)
@@ -461,7 +462,7 @@ class Board:
         else:
             title_text = f"{self.white} - {self.black}"
         draw.text(
-            xy=(x_origin + 240, y_origin - 120),
+            xy=(x_origin + square_width * 4, y_origin - square_width * 2),
             text=title_text,
             anchor="ms",
             align="center",
@@ -473,7 +474,7 @@ class Board:
         sub_title_font = ImageFont.truetype("ariali.ttf", 20)
         sub_title_text = f"{self.site}, {self.formatted_date}" if self.formatted_date is not None else self.site
         draw.text(
-            xy=(x_origin + 240, y_origin - 100),
+            xy=(x_origin + square_width * 4, y_origin - square_width * 1.667),
             text=sub_title_text,
             anchor="ms",
             align="center",
@@ -485,7 +486,7 @@ class Board:
         result_font = ImageFont.truetype("arialbd.ttf", 20)
         result_text = self.result
         draw.text(
-            xy=(x_origin + 240, y_origin - 80),
+            xy=(x_origin + square_width * 4, y_origin - square_width * 1.333),
             text=result_text,
             anchor="ms",
             align="center",
@@ -496,7 +497,7 @@ class Board:
         # move text
         move_text_font = ImageFont.truetype("arial.ttf", 20)
         draw.text(
-            xy=(x_origin, y_origin - 40),
+            xy=(x_origin, y_origin - square_width * 0.667),
             text=move_string,
             align="left",
             font=move_text_font,
@@ -506,13 +507,16 @@ class Board:
         for i in range(0, 8):
             for j in range(0, 8):
                 piece = self.grid[7-i, 7-j]
-                x = x_origin + 60 * j
-                y = y_origin + 60 * i
+                x = x_origin + square_width * j
+                y = y_origin + square_width * i
                 square_colour = white_square_colour if (i + j) % 2 == 0 else black_square_colour
-                draw.rectangle(xy=((x, y), (x + 60, y + 60)), fill=square_colour)
+                draw.rectangle(xy=((x, y), (x + square_width, y + square_width)), fill=square_colour)
                 if piece is not None:
                     draw.text(
-                        xy=(x_origin + 60 * j + 30, y_origin + 60 * i + 30),
+                        xy=(
+                            x_origin + square_width * j + square_width * 0.5,
+                            y_origin + square_width * i + square_width * 0.5
+                        ),
                         text=piece.unicode,
                         anchor="mm",
                         align="center",
@@ -521,7 +525,7 @@ class Board:
                     )
                 if i == 0:
                     draw.text(
-                        xy=(x_origin - 30, y_origin + 60 * j + 30),
+                        xy=(x_origin - square_width * 0.5, y_origin + square_width * j + square_width * 0.5),
                         text="12345678"[7-j],
                         anchor="mm",
                         align="right",
@@ -531,7 +535,10 @@ class Board:
                     )
                 if j == 7:
                     draw.text(
-                        xy=(x_origin + 60 * i + 30, y_origin + 60 * 8 + 30),
+                        xy=(
+                            x_origin + square_width * i + square_width * 0.5,
+                            y_origin + square_width * 8 + square_width * 0.5
+                        ),
                         text="abcdefgh"[i],
                         anchor="mm",
                         align="center",
@@ -539,7 +546,6 @@ class Board:
                         fill="black",
                         stroke_width=0
                     )
-
         return image
 
     def add_image(self, move_string=""):

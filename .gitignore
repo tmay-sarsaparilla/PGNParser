@@ -74,5 +74,5 @@ fabric.properties
 .idea/caches/build_file_checksums.ser
 /venv/
 /.idea
-/pycache
-/chessplot/test_chess_gif.gif
+chessplot/__pycache__/
+
