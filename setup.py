@@ -1,10 +1,22 @@
 
-from setuptools import setup, find_packages
+from distutils.core import setup
 
 setup(
     name='chessplot',
     version='1.0',
-    packages=find_packages(),
+    license="GPLv3.0",
+    description="Package for visualising chess games",
+    author="Timothy May",
+    url="https://github.com/tmay-sarsaparilla/PGNParser",
+    keywords=["chess", "pgn", "visualisation", "parser", "gif", "pdf"],
+    packages=["chessplot"],
     python_requires=">=3.7",
-    install_requires=["numpy>=1.21.1", "Pillow>=8.3.1"]
+    install_requires=["numpy>=1.21.1", "Pillow>=8.3.1"],
+    classifiers=[
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Everyone",
+        "Topic :: Data Visualisation",
+        "License :: GPLv3.0",
+        "Programming Language :: Python :: 3.7"
+    ]
 )
