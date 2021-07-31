@@ -1,6 +1,7 @@
 
 import numpy as np
 import re
+import datetime
 from PIL import Image, ImageDraw, ImageFont
 
 
@@ -201,8 +202,11 @@ class Board:
             self.event_round,
             self.white,
             self.black,
+            self.white_elo,
+            self.black_elo,
             self.result
         ) = self.get_metadata(tags=tags)
+        self.formatted_date = self.format_date()
         self.grid = self.generate_board()
         self.images = [self.generate_image()]
 
@@ -227,8 +231,23 @@ class Board:
         event_round = get_tag(tag_key="Round")
         white = get_tag(tag_key="White", default_value="Unknown")
         black = get_tag(tag_key="Black", default_value="Unknown")
+        white_elo = get_tag(tag_key="WhiteELO")
+        black_elo = get_tag(tag_key="BlackELO")
         result = get_tag(tag_key="Result")
-        return fen, event, site, date, event_round, white, black, result
+        return fen, event, site, date, event_round, white, black, white_elo, black_elo, result
+
+    def format_date(self):
+        """Format game date"""
+        year, month, day = self.date.split(".")
+        if year == "??":
+            date = None
+        elif month == "??":
+            date = year
+        elif day == "??":
+            date = datetime.date(int(year), int(month), 0).strftime("%A %d %B %Y")
+        else:
+            date = datetime.date(int(year), int(month), int(day)).strftime("%A %d %B %Y")
+        return date
 
     def generate_board(self):
         """Generate a board from a given FEN code"""
@@ -425,34 +444,54 @@ class Board:
         """Generate an image of the board in its current state"""
         image = Image.new(mode="RGBA", size=(600, 700), color="white")
         unicode_font = ImageFont.truetype("seguisym.ttf", 50)
-        title_font = ImageFont.truetype("arial.ttf", 30)
-        sub_title_font = ImageFont.truetype("arial.ttf", 15)
-        move_text_font = ImageFont.truetype("arial.ttf", 20)
         black_square_colour = "#276996"
         white_square_colour = "#e2e7ee"
         draw = ImageDraw.ImageDraw(im=image)
 
         x_origin, y_origin = 60, 160
 
-        draw.text(  # title text
+        # title text
+        title_font = ImageFont.truetype("arial.ttf", 30)
+        if self.white_elo != "" and self.black_elo != "":
+            title_text = f"{self.white}({self.white_elo}) - {self.black}({self.black_elo})"
+        else:
+            title_text = f"{self.white} - {self.black}"
+        draw.text(
             xy=(x_origin + 240, y_origin - 120),
-            text=f"{self.white} - {self.black}",
+            text=title_text,
             anchor="ms",
             align="center",
             font=title_font,
             fill="black"
         )
 
-        draw.text(  # sub-title text
+        # sub-title text
+        sub_title_font = ImageFont.truetype("ariali.ttf", 20)
+        sub_title_text = f"{self.site}, {self.formatted_date}" if self.formatted_date is not None else self.site
+        draw.text(
             xy=(x_origin + 240, y_origin - 100),
-            text=f"{self.site}, {self.date}",
+            text=sub_title_text,
             anchor="ms",
             align="center",
             font=sub_title_font,
             fill="black"
         )
 
-        draw.text(  # move text
+        # result text
+        result_font = ImageFont.truetype("arialbd.ttf", 20)
+        result_text = self.result
+        draw.text(
+            xy=(x_origin + 240, y_origin - 80),
+            text=result_text,
+            anchor="ms",
+            align="center",
+            font=result_font,
+            fill="black"
+        )
+
+        # move text
+        move_text_font = ImageFont.truetype("arial.ttf", 20)
+        draw.text(
             xy=(x_origin, y_origin - 40),
             text=move_string,
             align="left",
@@ -468,15 +507,13 @@ class Board:
                 square_colour = white_square_colour if (i + j) % 2 == 0 else black_square_colour
                 draw.rectangle(xy=((x, y), (x + 60, y + 60)), fill=square_colour)
                 if piece is not None:
-                    piece_colour = "white" if piece.is_white else "black"
                     draw.text(
                         xy=(x_origin + 60 * j + 30, y_origin + 60 * i + 30),
                         text=piece.unicode,
                         anchor="mm",
                         align="center",
                         font=unicode_font,
-                        fill="black",
-                        stroke_width=0
+                        fill="black"
                     )
                 if i == 0:
                     draw.text(
@@ -513,7 +550,7 @@ class Board:
             fp="test_chess_gif.gif",
             save_all=True,
             append_images=save_images[1:],
-            duration=1000,  # 1 second per loop
+            duration=2000,  # 1 second per loop
             loop=0  # infinite loop
         )
         return
