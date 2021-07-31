@@ -6,6 +6,7 @@ from .parse import pgn_to_file
 
 
 def main(args):
+    """Parse inputted arguments and call the pgn_to_file function"""
     parser = argparse.ArgumentParser(description="Chessplot", usage="Reads and plots PGN files to .gif or .pdf")
     parser.add_argument("-file_path", type=str, required=True, help="Location of PGN file to be parsed")
     parser.add_argument("-output_file_path", type=str, required=True, help="Location of the plot file to be created")
