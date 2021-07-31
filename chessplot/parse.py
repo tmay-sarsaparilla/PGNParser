@@ -20,6 +20,7 @@ def parse_file(file_path):
     if moves is None:
         raise ValueError(f"File {file_path} contains no move set")
 
+    moves = moves.replace("\n", " ")
     move_pairs = [pair.strip() for pair in re.split("\\d+\\.", moves) if pair != '']
 
     return tags, move_pairs

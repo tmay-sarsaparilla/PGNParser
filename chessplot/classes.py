@@ -45,6 +45,7 @@ class Piece:
         self.position = Position(row=row, col=col)
         self.move_metric = self.set_move_metric()
         self._has_moved = False
+        self._position_history = [self.position]
 
     def __repr__(self):
         return repr(self.name)
@@ -80,6 +81,7 @@ class Piece:
     def update_position(self, row, col):
         """Update the position of a piece with a new position"""
         self.position = Position(row=row, col=col)
+        self._position_history.append(self.position)
         self._has_moved = True
         return
 
@@ -91,15 +93,17 @@ class Piece:
         - Pawn capturing a piece
         - Pawn capturing a piece en passant
         """
-        if self._rank != "P":  # pieces other than pawns have no additional directions
+        if self.rank != "P":  # pieces other than pawns have no additional directions
             return []
 
         situational_directions = []
         if not self._has_moved:  # pawn can move forward two squares on its first move
             if self.is_white:
-                situational_directions.append((2, 0))
+                if board[self.position.row + 1, self.position.col] is None:  # but only if it isn't blocked in
+                    situational_directions.append((2, 0))
             else:
-                situational_directions.append((-2, 0))
+                if board[self.position.row - 1, self.position.col] is None:
+                    situational_directions.append((-2, 0))
 
         capture_moves = [(1, -1), (1, 1)] if self.is_white else [(-1, -1), (-1, 1)]
 
