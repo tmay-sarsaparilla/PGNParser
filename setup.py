@@ -15,9 +15,9 @@ setup(
     install_requires=["numpy>=1.21.1", "Pillow>=8.3.1"],
     classifiers=[
         "Development Status :: 3 - Alpha",
-        "Intended Audience :: Everyone",
-        "Topic :: Data Visualisation",
-        "License :: GPLv3.0",
+        "Intended Audience :: End Users/Desktop",
+        "Topic :: Games/Entertainment :: Board Games",
+        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Programming Language :: Python :: 3.7"
     ]
 )

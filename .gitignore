@@ -79,3 +79,4 @@ chessplot/__pycache__/
 /build
 test.py
 /chessplot.egg-info
+/MANIFEST
