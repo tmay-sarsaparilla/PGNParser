@@ -18,11 +18,13 @@ def main(args):
     )
     args = parser.parse_args(args)
 
+    print(f"Processing PGN file: {args.file_path}")
     pgn_to_file(
         file_path=args.file_path,
         output_file_path=args.output_file_path,
         output_file_format=args.output_file_format
     )
+    print(f"Created .{args.output_file_format} file: {args.output_file_path}")
 
 
 if __name__ == "__main__":
