@@ -75,4 +75,7 @@ fabric.properties
 /venv/
 /.idea
 chessplot/__pycache__/
-
+/dist
+/build
+test.py
+/chessplot.egg-info
