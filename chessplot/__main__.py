@@ -1,7 +1,6 @@
 
 import argparse
 import sys
-
 from .parse import pgn_to_file
 
 
