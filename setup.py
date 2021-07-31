@@ -8,6 +8,7 @@ setup(
     description="Package for visualising chess games",
     author="Timothy May",
     url="https://github.com/tmay-sarsaparilla/PGNParser",
+    download_url="https://github.com/tmay-sarsaparilla/PGNParser/archive/refs/tags/v1.0-beta.tar.gz",
     keywords=["chess", "pgn", "visualisation", "parser", "gif", "pdf"],
     packages=["chessplot"],
     python_requires=">=3.7",
