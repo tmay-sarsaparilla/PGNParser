@@ -257,8 +257,8 @@ class Board:
         event_round = get_tag(tag_key="Round")
         white = get_tag(tag_key="White", default_value="Unknown")
         black = get_tag(tag_key="Black", default_value="Unknown")
-        white_elo = get_tag(tag_key="WhiteELO")
-        black_elo = get_tag(tag_key="BlackELO")
+        white_elo = get_tag(tag_key="WhiteElo")
+        black_elo = get_tag(tag_key="BlackElo")
         result = get_tag(tag_key="Result")
         return fen, event, site, date, event_round, white, black, white_elo, black_elo, result
 
@@ -479,9 +479,9 @@ class Board:
         x_origin, y_origin = square_width, square_width * 2.667
 
         # title text
-        title_font = ImageFont.truetype("arial.ttf", 30)
+        title_font = ImageFont.truetype("arial.ttf", 24)
         if self.white_elo != "" and self.black_elo != "":
-            title_text = f"{self.white}({self.white_elo}) - {self.black}({self.black_elo})"
+            title_text = f"{self.white} ({self.white_elo}) - {self.black} ({self.black_elo})"
         else:
             title_text = f"{self.white} - {self.black}"
         draw.text(
@@ -494,10 +494,10 @@ class Board:
         )
 
         # sub-title text
-        sub_title_font = ImageFont.truetype("ariali.ttf", 20)
+        sub_title_font = ImageFont.truetype("ariali.ttf", 18)
         sub_title_text = f"{self.site}, {self.formatted_date}" if self.formatted_date is not None else self.site
         draw.text(
-            xy=(x_origin + square_width * 4, y_origin - square_width * 1.667),
+            xy=(x_origin + square_width * 4, y_origin - square_width * 1.5),
             text=sub_title_text,
             anchor="ms",
             align="center",
@@ -506,10 +506,10 @@ class Board:
         )
 
         # result text
-        result_font = ImageFont.truetype("arialbd.ttf", 20)
+        result_font = ImageFont.truetype("arialbd.ttf", 18)
         result_text = self.result
         draw.text(
-            xy=(x_origin + square_width * 4, y_origin - square_width * 1.333),
+            xy=(x_origin + square_width * 4, y_origin - square_width * 1),
             text=result_text,
             anchor="ms",
             align="center",
