@@ -446,7 +446,7 @@ class Board:
 
     def generate_image(self, move_string=""):
         """Generate an image of the board in its current state"""
-        image = Image.new(mode="RGBA", size=(600, 700), color="white")
+        image = Image.new(mode="RGB", size=(600, 700), color="white")
         unicode_font = ImageFont.truetype("seguisym.ttf", 50)
         black_square_colour = "#276996"
         white_square_colour = "#e2e7ee"
@@ -547,14 +547,27 @@ class Board:
         self.images.append(self.generate_image(move_string=move_string))
         return
 
-    def create_gif(self):
-        """Create an animated gif from a list of images"""
-        save_images = self.images + [self.images[-1]]  # add last element twice before loop restarts
-        save_images[0].save(
-            fp="test_chess_gif.gif",
-            save_all=True,
-            append_images=save_images[1:],
-            duration=2000,  # 1 second per loop
-            loop=0  # infinite loop
-        )
+    def to_file(self, file_path, file_format):
+        """Create a file of the supplied format"""
+        if file_format == "gif":
+            save_images = self.images + [self.images[-1]]  # add last element twice before loop restarts
+            save_images[0].save(
+                fp=file_path,
+                format=file_format,
+                save_all=True,
+                append_images=save_images[1:],
+                duration=2000,  # 1 second per loop
+                loop=0  # infinite loop
+            )
+        elif file_format == "pdf":
+            save_images = self.images
+            save_images[0].save(
+                fp=file_path,
+                format=file_format,
+                save_all=True,
+                append_images=save_images[1:],
+                resolution=1800
+            )
+        else:
+            raise ValueError(f"File format '{file_format}' is not supported. Please choose either 'gif' or 'pdf'")
         return
