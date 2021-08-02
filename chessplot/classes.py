@@ -6,7 +6,19 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 class Piece:
-    """Class for pieces"""
+    """
+    A class for chess pieces.
+
+    Attributes:
+        _name (str): The name of the piece e.g. 'P' is a white pawn.
+        _is_white (bool): Indicator for whether the piece is white or not.
+        _rank (str): The rank of a piece e.g. 'R' for rook, 'B' for bishop etc.
+        _unicode (str): Unicode representation of the piece.
+        position (Position): Current position of the piece.
+        move_metric (list): List of directions the piece can move in.
+        _has_moved (bool): Indicator of whether the piece has moved or not.
+        _position_history (tuple): Tuple of positions the piece has occupied and the move number.
+    """
 
     __valid_piece_names = ["P", "N", "B", "R", "Q", "K"]
 
@@ -37,6 +49,14 @@ class Piece:
     }
 
     def __init__(self, name, row, col):
+        """
+        Constructor method for the Piece class.
+
+        Parameters:
+            name (str): Name of the piece e.g. 'P' is a white pawn.
+            row (int): Row number of the piece's position.
+            col (int): Column number of the piece's position.
+        """
         assert name.upper() in Piece.__valid_piece_names, f"{name} is not a valid piece name"
         self._name = name
         self._is_white = True if name == name.upper() else False
@@ -48,28 +68,36 @@ class Piece:
         self._position_history = [(0, self.position)]
 
     def __repr__(self):
+        """Repr method for the Piece class."""
         return repr(self.name)
 
     @property
     def name(self):
-        """Get function for the 'name' property"""
+        """Get function for the 'name' property."""
         return self._name
 
     @property
     def is_white(self):
-        """Get function for the 'is_white' property"""
+        """Get function for the 'is_white' property."""
         return self._is_white
 
     @property
     def rank(self):
+        """Get function for the 'rank' property."""
         return self._rank
 
     @property
     def unicode(self):
+        """Get function for the 'unicode' property."""
         return self._unicode
 
     def set_move_metric(self):
-        """Set the list of move metrics for the piece"""
+        """
+        Set the list of move metrics for the piece.
+
+        Returns:
+            (list): A list of possible directions the piece can move in.
+        """
         if self.rank == "P":
             if self.is_white:
                 return [(1, 0)]
@@ -79,19 +107,33 @@ class Piece:
             return Piece.__move_metrics[self.rank]
 
     def update_position(self, row, col, move_number):
-        """Update the position of a piece with a new position"""
+        """
+        Update the position of a piece with a new position.
+
+        Parameters:
+            row (int): Row number of the new position.
+            col (int): Column number of the new position.
+            move_number (int): The current move number in the game.
+        """
         self.position = Position(row=row, col=col)
         self._position_history.append((move_number, self.position))
         self._has_moved = True
         return
 
     def get_situational_directions(self, board):
-        """Get a list of situational directions
+        """
+        Get a list of situational directions.
 
         These include:
         - Pawn moving two squares on its first move
         - Pawn capturing a piece
         - Pawn capturing a piece en passant
+
+        Parameters:
+            board (np.ndarray): The game board.
+
+        Returns:
+            situational_directions (list): A list of directions the piece can move in.
         """
         if self.rank != "P":  # pieces other than pawns have no additional directions
             return []
@@ -146,7 +188,15 @@ class Piece:
         return situational_directions
 
     def get_possible_positions(self, board):
-        """Determine all possible legal positions which the piece can move to"""
+        """
+        Determine all possible legal positions which the piece can move to.
+
+        Parameters:
+            board (np.ndarray): The game board.
+
+        Returns:
+            possible_positions (list): A list of possible positions the piece can move to.
+        """
         max_move = 1 if self.rank in ["P", "N", "K"] else 7
         situational_directions = self.get_situational_directions(board=board)
         possible_positions = []
@@ -177,35 +227,56 @@ class Piece:
 
 
 class Position:
-    """Class for piece positions"""
+    """
+    A class for piece positions.
+
+    Attributes:
+        row (int): The row number of the position.
+        col (int): The column number of the position.
+        name (str): The name of the position e.g. 'a4'.
+        is_legal (bool): Indicator of whether the position is legal or not i.e. on the board.
+    """
 
     __row_names = "12345678"
     __col_names = "hgfedcba"
 
     def __init__(self, row, col):
+        """
+        Constructor method for the Position class.
+
+        Parameters:
+             row (int): Row number of the position.
+             col (int): Column number of the position.
+        """
         self.row = row
         self.col = col
         self.name = self.set_name()
         self.is_legal = self.check_legality()
 
     def __repr__(self):
+        """Repr method for the Position class."""
         return repr(self.name)
 
     def __eq__(self, other):
+        """__eq__ method for the Position class."""
         if self.row == other.row and self.col == other.col:
             return True
         else:
             return False
 
     def set_name(self):
-        """Set the name of the position"""
+        """Set the name of the position."""
         try:
             return self.__col_names[self.col] + self.__row_names[self.row]
         except IndexError:
             return ""
 
     def check_legality(self):
-        """Check whether a position is legal"""
+        """
+        Check whether a position is legal.
+
+        If a position lies off the board, it is illegal.
+        """
         if self.row < 0 or self.row >= 8:
             return False
         elif self.col < 0 or self.col >= 8:
@@ -234,7 +305,6 @@ class Board:
         self.formatted_date = self.format_date()
         self.grid = self.generate_board()
         self.move_count = 0
-        self.images = [self.generate_image()]
 
     def __repr__(self):
         print_grid = np.vstack(([["h", "g", "f", "e", "d", "c", "b", "a"]], self.grid))
@@ -467,14 +537,18 @@ class Board:
 
         raise ValueError(f"Invalid move: {move_string}")
 
-    def generate_image(self, move_string=""):
-        """Generate an image of the board in its current state"""
+    def draw(self, move_string=""):
+        """Draw an image of the board in its current state
+
+            :param: move_string (str): a string describing the move being drawn
+            :return: frame (Image): an image depicting the board in its current state
+        """
         square_width = 60
-        image = Image.new(mode="RGB", size=(square_width * 10, int(square_width * 11.667)), color="white")
+        frame = Image.new(mode="RGB", size=(square_width * 10, int(square_width * 11.667)), color="white")
         unicode_font = ImageFont.truetype("seguisym.ttf", 50)
         black_square_colour = "#276996"
         white_square_colour = "#e2e7ee"
-        draw = ImageDraw.ImageDraw(im=image)
+        draw = ImageDraw.ImageDraw(im=frame)
 
         x_origin, y_origin = square_width, square_width * 2.667
 
@@ -569,34 +643,134 @@ class Board:
                         fill="black",
                         stroke_width=0
                     )
-        return image
+        return frame
 
-    def add_image(self, move_string=""):
-        """Add to the list of board images"""
-        self.images.append(self.generate_image(move_string=move_string))
-        return
 
-    def to_file(self, file_path, file_format):
-        """Create a file of the supplied format"""
-        if file_format == "gif":
-            save_images = self.images + [self.images[-1]]  # add last element twice before loop restarts
-            save_images[0].save(
-                fp=file_path,
-                format=file_format,
-                save_all=True,
-                append_images=save_images[1:],
-                duration=2000,  # 1 second per loop
-                loop=0  # infinite loop
-            )
-        elif file_format == "pdf":
-            save_images = self.images
-            save_images[0].save(
-                fp=file_path,
-                format=file_format,
-                save_all=True,
-                append_images=save_images[1:],
-                resolution=1800
-            )
-        else:
-            raise ValueError(f"File format '{file_format}' is not supported. Please choose either 'gif' or 'pdf'")
-        return
+class ChessPlot:
+    """A class for plots of chess games.
+
+    Attributes:
+        _pgn (str): A path to a .pgn file to be plotted.
+        _tags (dict): A set of metadata tags from the input .pgn file.
+        _move_pairs (list): A set of pairs of moves played during the game from the input .pgn file.
+        _frames (list): A list of images, one for each of the moves played during the game.
+    """
+    def __init__(self, pgn):
+        """
+        Constructor for the ChessPlot class.
+
+        Parameters:
+            pgn (str): A path to a .pgn file to be plotted.
+        """
+        self._pgn = pgn
+        self._tags, self._move_pairs = self._parse_file(file_path=pgn)
+        self._frames = self._draw_frames()
+
+    @staticmethod
+    def _parse_file(file_path):
+        """
+        Parse a given file into a set of metadata tags and a move set.
+
+        Parameters:
+            file_path (str): A path to the .pgn file to be parsed.
+
+        Returns:
+            tags (dict): A dictionary of metadata tags and their values.
+            move_pairs (list): A list of pairs of moves played during the game.
+        """
+        file = open(file_path, "r")
+        tags = {}
+        moves = None
+        for line in file:
+            if line[0] == "[":  # extract metadata tags
+                for char in ["[", "]", '"', "\n"]:
+                    line = line.replace(char, "")
+
+                key, value = line.split(" ", 1)
+                tags[key] = value
+            else:  # extract move set
+                moves = file.read()
+                break
+        if moves is None:
+            raise ValueError(f"File {file_path} contains no move set")
+
+        moves = moves.replace("\n", " ")
+        move_pairs = [
+            [move for move in pair.strip().split(" ") if move != ""]
+            for pair in re.split("\\d+\\.", moves) if pair != ''
+        ]
+
+        return tags, move_pairs
+
+    def _draw_frames(self):
+        """
+        Draw a list of frames, one for each move played in the game.
+
+        Returns:
+            frames (list): A list of frames, one for each move in the game.
+        """
+        white_to_move = True
+        board = Board(tags=self._tags)
+        frames = [board.draw()]  # add starting position image
+        move_count = 0
+        for pair in self._move_pairs:
+            move_count += 1
+            for move in pair:
+                if move in ["1-0", "0-1", "1/2-1/2"]:
+                    break
+                if white_to_move:
+                    move_string = f"{move_count}. {move}"
+                else:
+                    move_string = f"{move_count}... {move}"
+
+                board.execute_move(move_string=move, white_to_move=white_to_move)
+                frames.append(board.draw(move_string=move_string))
+                white_to_move = not white_to_move
+        return frames
+
+    def to_gif(self, save_path=None, duration=2000):
+        """
+        Save the ChessPlot to a gif at a given location.
+
+        If the given location is None, the location of the input .pgn file will be used with the .gif extension.
+
+        Parameters:
+            save_path (str): A location where the produced .gif should be saved.
+            duration (int): The time in milliseconds each frame of the .gif should last.
+        """
+        if save_path is None:
+            save_path = self._pgn.replace(".pgn", ".gif")
+        save_images = self._frames + [self._frames[-1]]  # add last element twice before loop restarts
+        save_images[0].save(
+            fp=save_path,
+            format="gif",
+            save_all=True,
+            append_images=save_images[1:],
+            duration=duration,  # 1 second per loop
+            loop=0  # infinite loop
+        )
+
+    def to_pdf(self, save_path=None):
+        """
+        Save the ChessPlot to a pdf at a given location.
+
+        If the given location is None, the location of the input .pgn file will be used with the .pdf extension.
+
+        Parameters:
+            save_path (str): A location where the produced .pdf should be saved.
+        """
+        if save_path is None:
+            save_path = self._pgn.replace(".pgn", ".pdf")
+        save_images = self._frames
+        save_images[0].save(
+            fp=save_path,
+            format="pdf",
+            save_all=True,
+            append_images=save_images[1:],
+            resolution=1800
+        )
+
+    def show(self):
+        """Show all frames of a game."""
+        for frame in self._frames:
+            frame.show()
