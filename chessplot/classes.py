@@ -1,3 +1,13 @@
+"""
+Module containing all classes used by the chessplot package.
+
+Classes:
+
+    Piece
+    Position
+    Game
+    ChessPlot
+"""
 
 import numpy as np
 import re
@@ -63,7 +73,7 @@ class Piece:
         self._rank = name.upper()
         self._unicode = Piece.__unicode_lookup[self.name]
         self.position = Position(row=row, col=col)
-        self.move_metric = self.set_move_metric()
+        self.move_metric = self._set_move_metric()
         self._has_moved = False
         self._position_history = [(0, self.position)]
 
@@ -91,7 +101,7 @@ class Piece:
         """Get function for the 'unicode' property."""
         return self._unicode
 
-    def set_move_metric(self):
+    def _set_move_metric(self):
         """
         Set the list of move metrics for the piece.
 
@@ -120,7 +130,7 @@ class Piece:
         self._has_moved = True
         return
 
-    def get_situational_directions(self, board, move_number):
+    def _get_situational_directions(self, board, move_number):
         """
         Get a list of situational directions.
 
@@ -200,7 +210,7 @@ class Piece:
             possible_positions (list): A list of possible positions the piece can move to.
         """
         max_move = 1 if self.rank in ["P", "N", "K"] else 7
-        situational_directions = self.get_situational_directions(board=board, move_number=move_number)
+        situational_directions = self._get_situational_directions(board=board, move_number=move_number)
         possible_positions = []
         for direction in self.move_metric + situational_directions:
             for i in range(1, max_move + 1):
