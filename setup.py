@@ -3,12 +3,12 @@ from distutils.core import setup
 
 setup(
     name='chessplot',
-    version='1.2',
+    version='1.3',
     license="GPLv3.0",
     description="Package for visualising chess games",
     author="Timothy May",
     url="https://github.com/tmay-sarsaparilla/PGNParser",
-    download_url="https://github.com/tmay-sarsaparilla/PGNParser/archive/refs/tags/v1.2-beta.tar.gz",
+    download_url="https://github.com/tmay-sarsaparilla/PGNParser/archive/refs/tags/v1.3-beta.tar.gz",
     keywords=["chess", "pgn", "visualisation", "parser", "gif", "pdf"],
     packages=["chessplot"],
     python_requires=">=3.7",

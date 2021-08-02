@@ -1,2 +1,9 @@
+"""
+Create plots of chess games using .pgn files.
 
-from .parse import pgn_to_file
+Classes:
+
+    ChessPlot
+"""
+
+from .classes import ChessPlot

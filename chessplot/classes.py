@@ -1,3 +1,13 @@
+"""
+Module containing all classes used by the chessplot package.
+
+Classes:
+
+    Piece
+    Position
+    Game
+    ChessPlot
+"""
 
 import numpy as np
 import re
@@ -6,7 +16,19 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 class Piece:
-    """Class for pieces"""
+    """
+    A class for chess pieces.
+
+    Attributes:
+        _name (str): The name of the piece e.g. 'P' is a white pawn.
+        _is_white (bool): Indicator for whether the piece is white or not.
+        _rank (str): The rank of a piece e.g. 'R' for rook, 'B' for bishop etc.
+        _unicode (str): Unicode representation of the piece.
+        position (Position): Current position of the piece.
+        move_metric (list): List of directions the piece can move in.
+        _has_moved (bool): Indicator of whether the piece has moved or not.
+        _position_history (tuple): Tuple of positions the piece has occupied and the move number.
+    """
 
     __valid_piece_names = ["P", "N", "B", "R", "Q", "K"]
 
@@ -37,39 +59,55 @@ class Piece:
     }
 
     def __init__(self, name, row, col):
+        """
+        Constructor method for the Piece class.
+
+        Parameters:
+            name (str): Name of the piece e.g. 'P' is a white pawn.
+            row (int): Row number of the piece's position.
+            col (int): Column number of the piece's position.
+        """
         assert name.upper() in Piece.__valid_piece_names, f"{name} is not a valid piece name"
         self._name = name
         self._is_white = True if name == name.upper() else False
         self._rank = name.upper()
         self._unicode = Piece.__unicode_lookup[self.name]
         self.position = Position(row=row, col=col)
-        self.move_metric = self.set_move_metric()
+        self.move_metric = self._set_move_metric()
         self._has_moved = False
         self._position_history = [(0, self.position)]
 
     def __repr__(self):
+        """Repr method for the Piece class."""
         return repr(self.name)
 
     @property
     def name(self):
-        """Get function for the 'name' property"""
+        """Get function for the 'name' property."""
         return self._name
 
     @property
     def is_white(self):
-        """Get function for the 'is_white' property"""
+        """Get function for the 'is_white' property."""
         return self._is_white
 
     @property
     def rank(self):
+        """Get function for the 'rank' property."""
         return self._rank
 
     @property
     def unicode(self):
+        """Get function for the 'unicode' property."""
         return self._unicode
 
-    def set_move_metric(self):
-        """Set the list of move metrics for the piece"""
+    def _set_move_metric(self):
+        """
+        Set the list of move metrics for the piece.
+
+        Returns:
+            (list): A list of possible directions the piece can move in.
+        """
         if self.rank == "P":
             if self.is_white:
                 return [(1, 0)]
@@ -79,19 +117,34 @@ class Piece:
             return Piece.__move_metrics[self.rank]
 
     def update_position(self, row, col, move_number):
-        """Update the position of a piece with a new position"""
+        """
+        Update the position of a piece with a new position.
+
+        Parameters:
+            row (int): Row number of the new position.
+            col (int): Column number of the new position.
+            move_number (int): The current move number in the game.
+        """
         self.position = Position(row=row, col=col)
         self._position_history.append((move_number, self.position))
         self._has_moved = True
         return
 
-    def get_situational_directions(self, board):
-        """Get a list of situational directions
+    def _get_situational_directions(self, board, move_number):
+        """
+        Get a list of situational directions.
 
         These include:
         - Pawn moving two squares on its first move
         - Pawn capturing a piece
         - Pawn capturing a piece en passant
+
+        Parameters:
+            board (np.ndarray): The game board.
+            move_number (int): The current move number.
+
+        Returns:
+            situational_directions (list): A list of directions the piece can move in.
         """
         if self.rank != "P":  # pieces other than pawns have no additional directions
             return []
@@ -138,17 +191,26 @@ class Piece:
                     position_inhabitant.is_white != self.is_white  # opponent colour
                     and position_inhabitant.rank == "P"  # is a pawn
                     and len(position_inhabitant.position_history) == 2  # has only moved once
-                    and position_inhabitant.position_history[-1][0] == board.move_count  # has just moved
+                    and position_inhabitant.position_history[-1][0] == move_number  # has just moved
             )
             if can_capture:
                 if direction not in situational_directions:
                     situational_directions.append(direction)
         return situational_directions
 
-    def get_possible_positions(self, board):
-        """Determine all possible legal positions which the piece can move to"""
+    def get_possible_positions(self, board, move_number):
+        """
+        Determine all possible legal positions which the piece can move to.
+
+        Parameters:
+            board (np.ndarray): The game board.
+            move_number (int): The current move number.
+
+        Returns:
+            possible_positions (list): A list of possible positions the piece can move to.
+        """
         max_move = 1 if self.rank in ["P", "N", "K"] else 7
-        situational_directions = self.get_situational_directions(board=board)
+        situational_directions = self._get_situational_directions(board=board, move_number=move_number)
         possible_positions = []
         for direction in self.move_metric + situational_directions:
             for i in range(1, max_move + 1):
@@ -177,35 +239,76 @@ class Piece:
 
 
 class Position:
-    """Class for piece positions"""
+    """
+    A class for piece positions.
+
+    Attributes:
+        _row (int): The row number of the position.
+        _col (int): The column number of the position.
+        _name (str): The name of the position e.g. 'a4'.
+        _is_legal (bool): Indicator of whether the position is legal or not i.e. on the board.
+    """
 
     __row_names = "12345678"
     __col_names = "hgfedcba"
 
     def __init__(self, row, col):
-        self.row = row
-        self.col = col
-        self.name = self.set_name()
-        self.is_legal = self.check_legality()
+        """
+        Constructor method for the Position class.
+
+        Parameters:
+             row (int): Row number of the position.
+             col (int): Column number of the position.
+        """
+        self._row = row
+        self._col = col
+        self._name = self._set_name()
+        self._is_legal = self._check_legality()
+
+    @property
+    def row(self):
+        """Get method for the 'row' property."""
+        return self._row
+
+    @property
+    def col(self):
+        """Get method for the 'col' property."""
+        return self._col
+
+    @property
+    def name(self):
+        """Get method for the 'name' property."""
+        return self._name
+
+    @property
+    def is_legal(self):
+        """Get method for the 'is_legal' property."""
+        return self._is_legal
 
     def __repr__(self):
+        """Repr method for the Position class."""
         return repr(self.name)
 
     def __eq__(self, other):
+        """__eq__ method for the Position class."""
         if self.row == other.row and self.col == other.col:
             return True
         else:
             return False
 
-    def set_name(self):
-        """Set the name of the position"""
+    def _set_name(self):
+        """Set the name of the position."""
         try:
             return self.__col_names[self.col] + self.__row_names[self.row]
         except IndexError:
             return ""
 
-    def check_legality(self):
-        """Check whether a position is legal"""
+    def _check_legality(self):
+        """
+        Check whether a position is legal.
+
+        If a position lies off the board, it is illegal.
+        """
         if self.row < 0 or self.row >= 8:
             return False
         elif self.col < 0 or self.col >= 8:
@@ -214,57 +317,77 @@ class Position:
             return True
 
 
-class Board:
+class Game:
+    """
+    A class for chess games.
+
+    Attributes:
+        _fen (str): A FEN string for the starting position of the game.
+        _event (str): The event the game was played at.
+        _site (str): The location the game was played at.
+        _date (str): The date the game was played on.
+        _formatted_date (str): A formatted version of the date.
+        _event_round (str): The round of the event the game was played in.
+        _white (str): The name of the player with the white pieces.
+        _black (str): The name of the player with the black pieces.
+        _white_elo (str): The Elo rating of the player with the white pieces.
+        _black_elo (str): The Elo rating of the player with the black pieces.
+        _result (str): The final result of the game.
+        _board (np.ndarray): The game board.
+        _move_count (int): A count of the number of moves played in the game.
+    """
 
     __default_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
 
     def __init__(self, tags):
-        (
-            self.fen,
-            self.event,
-            self.site,
-            self.date,
-            self.event_round,
-            self.white,
-            self.black,
-            self.white_elo,
-            self.black_elo,
-            self.result
-        ) = self.get_metadata(tags=tags)
-        self.formatted_date = self.format_date()
-        self.grid = self.generate_board()
-        self.move_count = 0
-        self.images = [self.generate_image()]
+        """
+        Constructor method for the Game class.
+
+        Parameters:
+            tags (dict): A dictionary of metadata tags from a .pgn file.
+        """
+        self._tags = tags
+        self._fen = self._get_tag_value(tag_key="FEN", default_value=Game.__default_fen)
+        self._event = self._get_tag_value(tag_key="Event")
+        self._site = self._get_tag_value(tag_key="Site")
+        self._date = self._get_tag_value(tag_key="Date")
+        self._event_round = self._get_tag_value(tag_key="Round")
+        self._white = self._get_tag_value(tag_key="White", default_value="Unknown")
+        self._black = self._get_tag_value(tag_key="Black", default_value="Unknown")
+        self._white_elo = self._get_tag_value(tag_key="WhiteElo")
+        self._black_elo = self._get_tag_value(tag_key="BlackElo")
+        self._result = self._get_tag_value(tag_key="Result")
+        self._formatted_date = self._format_date()
+        self._board = self._generate_board()
+        self._move_count = 0
 
     def __repr__(self):
-        print_grid = np.vstack(([["h", "g", "f", "e", "d", "c", "b", "a"]], self.grid))
+        """Repr method for the Game class."""
+        print_grid = np.vstack(([["h", "g", "f", "e", "d", "c", "b", "a"]], self._board))
         print_grid = np.hstack((print_grid, [[" "], ["1"], ["2"], ["3"], ["4"], ["5"], ["6"], ["7"], ["8"]]))
         return str(np.flip(print_grid)).replace("None", " - ") + "\n"
 
-    @staticmethod
-    def get_metadata(tags):
-        """Get metadata from a set of tags"""
-        def get_tag(tag_key, default_value=""):
-            try:
-                return tags[tag_key]
-            except KeyError:
-                return default_value
+    def _get_tag_value(self, tag_key, default_value=""):
+        """
+        Get the value corresponding to a given tag key.
 
-        fen = get_tag(tag_key="FEN", default_value=Board.__default_fen)
-        event = get_tag(tag_key="Event")
-        site = get_tag(tag_key="Site")
-        date = get_tag(tag_key="Date")
-        event_round = get_tag(tag_key="Round")
-        white = get_tag(tag_key="White", default_value="Unknown")
-        black = get_tag(tag_key="Black", default_value="Unknown")
-        white_elo = get_tag(tag_key="WhiteElo")
-        black_elo = get_tag(tag_key="BlackElo")
-        result = get_tag(tag_key="Result")
-        return fen, event, site, date, event_round, white, black, white_elo, black_elo, result
+        Parameters:
+            tag_key (str): The key of the desired tag.
+            default_value (str): The default value in the event that the tag is not present.
+        """
+        try:
+            return self._tags[tag_key]
+        except KeyError:
+            return default_value
 
-    def format_date(self):
-        """Format game date"""
-        year, month, day = self.date.split(".")
+    def _format_date(self):
+        """
+        Format game date.
+
+        Returns:
+            date (str): A formatted version of the original date field.
+        """
+        year, month, day = self._date.split(".")
         if year == "??":
             date = None
         elif month == "??":
@@ -275,13 +398,18 @@ class Board:
             date = datetime.date(int(year), int(month), int(day)).strftime("%A %d %B %Y")
         return date
 
-    def generate_board(self):
-        """Generate a board from a given FEN code"""
+    def _generate_board(self):
+        """
+        Generate a board from a given FEN code.
+
+        Returns:
+            board (np.ndarray): An 8x8 array populated with Pieces depicting the game board.
+        """
         board = np.empty((8, 8), dtype=Piece)
 
         row = 7
         col = 7
-        for char in self.fen:
+        for char in self._fen:
             if char == "/":
                 row -= 1
                 col = 7
@@ -293,51 +421,75 @@ class Board:
 
         return board
 
-    def move_piece(self, piece, row, col, promoted_piece_rank=None):
-        """Move a piece on the grid"""
+    def _move_piece(self, piece, row, col, promoted_piece_rank=None):
+        """
+        Move a piece on the board.
+
+        Parameters:
+            piece (Piece): The piece to be moved.
+            row (int): The row number to move the piece to.
+            col (int): The column number to move the piece to.
+            promoted_piece_rank (str): Rank of piece to promote to (if any).
+        """
         current_row = piece.position.row
         current_col = piece.position.col
 
-        self.grid[current_row, current_col] = None
-        piece.update_position(row=row, col=col, move_number=self.move_count)
+        self._board[current_row, current_col] = None
+        piece.update_position(row=row, col=col, move_number=self._move_count)
         if promoted_piece_rank is not None:  # if pawn promotion, create a new piece at the new position
             new_piece_name = promoted_piece_rank.lower() if not piece.is_white else promoted_piece_rank
             new_piece = Piece(name=new_piece_name, row=row, col=col)
-            self.grid[row, col] = new_piece
+            self._board[row, col] = new_piece
         else:  # otherwise move the existing piece
-            self.grid[row, col] = piece
-        self.move_count += 1
+            self._board[row, col] = piece
+        self._move_count += 1
         return
 
-    def castle(self, white_to_move, castle_king_side):
-        """Executing castling of pieces on given side and for given colour"""
+    def _castle(self, white_to_move, castle_king_side):
+        """
+        Execute castling of pieces on given side and for given colour.
+
+        Parameters:
+            white_to_move (bool): Indicator of whether it's white's move or not.
+            castle_king_side (bool): Indicator of whether to castle king-side or not.
+        """
         if white_to_move:
-            king = self.grid[0, 3]
+            king = self._board[0, 3]
             if castle_king_side:
-                rook = self.grid[0, 0]
+                rook = self._board[0, 0]
             else:
-                rook = self.grid[0, 7]
+                rook = self._board[0, 7]
         else:
-            king = self.grid[7, 3]
+            king = self._board[7, 3]
             if castle_king_side:
-                rook = self.grid[7, 0]
+                rook = self._board[7, 0]
             else:
-                rook = self.grid[7, 7]
+                rook = self._board[7, 7]
 
         if castle_king_side:
-            self.move_piece(piece=king, row=king.position.row, col=king.position.col - 2)
-            self.move_piece(piece=rook, row=rook.position.row, col=rook.position.col + 2)
+            self._move_piece(piece=king, row=king.position.row, col=king.position.col - 2)
+            self._move_piece(piece=rook, row=rook.position.row, col=rook.position.col + 2)
         else:
-            self.move_piece(piece=king, row=king.position.row, col=king.position.col + 2)
-            self.move_piece(piece=rook, row=rook.position.row, col=rook.position.col - 3)
+            self._move_piece(piece=king, row=king.position.row, col=king.position.col + 2)
+            self._move_piece(piece=rook, row=rook.position.row, col=rook.position.col - 3)
 
         return
 
     def execute_move(self, move_string, white_to_move):
-        """Parse a given move and execute it"""
+        """
+        Execute a given move.
+
+        Parameters:
+            move_string (str): The move string to be executed e.g. 'Bxe4'.
+            white_to_move (bool): Indicator of whether it's white's move or not.
+
+        Raises:
+            ValueError: If move string if the format of the string is not recognised or if the move cannot be executed.
+        """
         row_names = "12345678"
         col_names = "hgfedcba"
 
+        # First parse the given move string
         castle_king_side = False
         castle_queen_side = False
         piece_rank = None
@@ -416,7 +568,7 @@ class Board:
             raise ValueError(f"Unrecognised move_string: {move_string}")
 
         if castle_king_side or castle_queen_side:
-            self.castle(white_to_move=white_to_move, castle_king_side=castle_king_side)
+            self._castle(white_to_move=white_to_move, castle_king_side=castle_king_side)
             return
 
         new_col = int(col_names.index(new_col_str))
@@ -426,16 +578,20 @@ class Board:
         candidate_pieces = []
         for row in range(0, 8):
             for col in range(0, 8):
-                piece = self.grid[row, col]
+                piece = self._board[row, col]
                 if piece is None:  # if square is empty, skip
                     continue
                 if piece.is_white != white_to_move:  # if piece is the wrong colour, skip
                     continue
-                if piece.rank == piece_rank and new_position in piece.get_possible_positions(self.grid):
+                is_candidate_piece = (
+                        piece.rank == piece_rank
+                        and new_position in piece.get_possible_positions(self._board, move_number=self._move_count)
+                )
+                if is_candidate_piece:
                     candidate_pieces.append(piece)
 
         if len(candidate_pieces) == 1:
-            self.move_piece(
+            self._move_piece(
                 piece=candidate_pieces[0],
                 row=new_row,
                 col=new_col,
@@ -448,42 +604,50 @@ class Board:
                     piece for piece in candidate_pieces
                     if piece.position.name == piece_col + piece_row
                 ]
-                self.move_piece(piece=piece, row=new_row, col=new_col, promoted_piece_rank=promoted_piece_rank)
+                self._move_piece(piece=piece, row=new_row, col=new_col, promoted_piece_rank=promoted_piece_rank)
                 return
             elif piece_row is not None:
                 piece, = [
                     piece for piece in candidate_pieces
                     if piece.position.row == int(row_names.index(piece_row))
                 ]
-                self.move_piece(piece=piece, row=new_row, col=new_col, promoted_piece_rank=promoted_piece_rank)
+                self._move_piece(piece=piece, row=new_row, col=new_col, promoted_piece_rank=promoted_piece_rank)
                 return
             elif piece_col is not None:
                 piece, = [
                     piece for piece in candidate_pieces
                     if piece.position.col == int(col_names.index(piece_col))
                 ]
-                self.move_piece(piece=piece, row=new_row, col=new_col, promoted_piece_rank=promoted_piece_rank)
+                self._move_piece(piece=piece, row=new_row, col=new_col, promoted_piece_rank=promoted_piece_rank)
                 return
 
         raise ValueError(f"Invalid move: {move_string}")
 
-    def generate_image(self, move_string=""):
-        """Generate an image of the board in its current state"""
+    def draw_board(self, move_string=""):
+        """
+        Draw an image of the board in its current state.
+
+        Parameter:
+            move_string (str): A string describing the move being drawn.
+
+        Returns:
+            frame (Image): An image depicting the game board in its current state.
+        """
         square_width = 60
-        image = Image.new(mode="RGB", size=(square_width * 10, int(square_width * 11.667)), color="white")
+        frame = Image.new(mode="RGB", size=(square_width * 10, int(square_width * 11.667)), color="white")
         unicode_font = ImageFont.truetype("seguisym.ttf", 50)
         black_square_colour = "#276996"
         white_square_colour = "#e2e7ee"
-        draw = ImageDraw.ImageDraw(im=image)
+        draw = ImageDraw.ImageDraw(im=frame)
 
         x_origin, y_origin = square_width, square_width * 2.667
 
         # title text
         title_font = ImageFont.truetype("arial.ttf", 24)
-        if self.white_elo != "" and self.black_elo != "":
-            title_text = f"{self.white} ({self.white_elo}) - {self.black} ({self.black_elo})"
+        if self._white_elo != "" and self._black_elo != "":
+            title_text = f"{self._white} ({self._white_elo}) - {self._black} ({self._black_elo})"
         else:
-            title_text = f"{self.white} - {self.black}"
+            title_text = f"{self._white} - {self._black}"
         draw.text(
             xy=(x_origin + square_width * 4, y_origin - square_width * 2),
             text=title_text,
@@ -495,7 +659,7 @@ class Board:
 
         # sub-title text
         sub_title_font = ImageFont.truetype("ariali.ttf", 18)
-        sub_title_text = f"{self.site}, {self.formatted_date}" if self.formatted_date is not None else self.site
+        sub_title_text = f"{self._site}, {self._formatted_date}" if self._formatted_date is not None else self._site
         draw.text(
             xy=(x_origin + square_width * 4, y_origin - square_width * 1.5),
             text=sub_title_text,
@@ -507,7 +671,7 @@ class Board:
 
         # result text
         result_font = ImageFont.truetype("arialbd.ttf", 18)
-        result_text = self.result
+        result_text = self._result
         draw.text(
             xy=(x_origin + square_width * 4, y_origin - square_width * 1),
             text=result_text,
@@ -529,7 +693,7 @@ class Board:
 
         for i in range(0, 8):
             for j in range(0, 8):
-                piece = self.grid[7-i, 7-j]
+                piece = self._board[7 - i, 7 - j]
                 x = x_origin + square_width * j
                 y = y_origin + square_width * i
                 square_colour = white_square_colour if (i + j) % 2 == 0 else black_square_colour
@@ -569,34 +733,134 @@ class Board:
                         fill="black",
                         stroke_width=0
                     )
-        return image
+        return frame
 
-    def add_image(self, move_string=""):
-        """Add to the list of board images"""
-        self.images.append(self.generate_image(move_string=move_string))
-        return
 
-    def to_file(self, file_path, file_format):
-        """Create a file of the supplied format"""
-        if file_format == "gif":
-            save_images = self.images + [self.images[-1]]  # add last element twice before loop restarts
-            save_images[0].save(
-                fp=file_path,
-                format=file_format,
-                save_all=True,
-                append_images=save_images[1:],
-                duration=2000,  # 1 second per loop
-                loop=0  # infinite loop
-            )
-        elif file_format == "pdf":
-            save_images = self.images
-            save_images[0].save(
-                fp=file_path,
-                format=file_format,
-                save_all=True,
-                append_images=save_images[1:],
-                resolution=1800
-            )
-        else:
-            raise ValueError(f"File format '{file_format}' is not supported. Please choose either 'gif' or 'pdf'")
-        return
+class ChessPlot:
+    """A class for plots of chess games.
+
+    Attributes:
+        _pgn (str): A path to a .pgn file to be plotted.
+        _tags (dict): A set of metadata tags from the input .pgn file.
+        _move_pairs (list): A set of pairs of moves played during the game from the input .pgn file.
+        _frames (list): A list of images, one for each of the moves played during the game.
+    """
+    def __init__(self, pgn):
+        """
+        Constructor for the ChessPlot class.
+
+        Parameters:
+            pgn (str): A path to a .pgn file to be plotted.
+        """
+        self._pgn = pgn
+        self._tags, self._move_pairs = self._parse_file(file_path=pgn)
+        self._frames = self._draw_frames()
+
+    @staticmethod
+    def _parse_file(file_path):
+        """
+        Parse a given file into a set of metadata tags and a move set.
+
+        Parameters:
+            file_path (str): A path to the .pgn file to be parsed.
+
+        Returns:
+            tags (dict): A dictionary of metadata tags and their values.
+            move_pairs (list): A list of pairs of moves played during the game.
+        """
+        file = open(file_path, "r")
+        tags = {}
+        moves = None
+        for line in file:
+            if line[0] == "[":  # extract metadata tags
+                for char in ["[", "]", '"', "\n"]:
+                    line = line.replace(char, "")
+
+                key, value = line.split(" ", 1)
+                tags[key] = value
+            else:  # extract move set
+                moves = file.read()
+                break
+        if moves is None:
+            raise ValueError(f"File {file_path} contains no move set")
+
+        moves = moves.replace("\n", " ")
+        move_pairs = [
+            [move for move in pair.strip().split(" ") if move != ""]
+            for pair in re.split("\\d+\\.", moves) if pair != ''
+        ]
+
+        return tags, move_pairs
+
+    def _draw_frames(self):
+        """
+        Draw a list of frames, one for each move played in the game.
+
+        Returns:
+            frames (list): A list of frames, one for each move in the game.
+        """
+        white_to_move = True
+        game = Game(tags=self._tags)
+        frames = [game.draw_board()]  # add starting position image
+        move_count = 0
+        for pair in self._move_pairs:
+            move_count += 1
+            for move in pair:
+                if move in ["1-0", "0-1", "1/2-1/2"]:
+                    break
+                if white_to_move:
+                    move_string = f"{move_count}. {move}"
+                else:
+                    move_string = f"{move_count}... {move}"
+
+                game.execute_move(move_string=move, white_to_move=white_to_move)
+                frames.append(game.draw_board(move_string=move_string))
+                white_to_move = not white_to_move
+        return frames
+
+    def to_gif(self, save_path=None, duration=2000):
+        """
+        Save the ChessPlot to a gif at a given location.
+
+        If the given location is None, the location of the input .pgn file will be used with the .gif extension.
+
+        Parameters:
+            save_path (str): A location where the produced .gif should be saved.
+            duration (int): The time in milliseconds each frame of the .gif should last.
+        """
+        if save_path is None:
+            save_path = self._pgn.replace(".pgn", ".gif")
+        save_images = self._frames + [self._frames[-1]]  # add last element twice before loop restarts
+        save_images[0].save(
+            fp=save_path,
+            format="gif",
+            save_all=True,
+            append_images=save_images[1:],
+            duration=duration,  # 1 second per loop
+            loop=0  # infinite loop
+        )
+
+    def to_pdf(self, save_path=None):
+        """
+        Save the ChessPlot to a pdf at a given location.
+
+        If the given location is None, the location of the input .pgn file will be used with the .pdf extension.
+
+        Parameters:
+            save_path (str): A location where the produced .pdf should be saved.
+        """
+        if save_path is None:
+            save_path = self._pgn.replace(".pgn", ".pdf")
+        save_images = self._frames
+        save_images[0].save(
+            fp=save_path,
+            format="pdf",
+            save_all=True,
+            append_images=save_images[1:],
+            resolution=1800
+        )
+
+    def show(self):
+        """Show all frames of a game."""
+        for frame in self._frames:
+            frame.show()
