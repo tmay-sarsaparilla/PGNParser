@@ -233,10 +233,10 @@ class Position:
     A class for piece positions.
 
     Attributes:
-        row (int): The row number of the position.
-        col (int): The column number of the position.
-        name (str): The name of the position e.g. 'a4'.
-        is_legal (bool): Indicator of whether the position is legal or not i.e. on the board.
+        _row (int): The row number of the position.
+        _col (int): The column number of the position.
+        _name (str): The name of the position e.g. 'a4'.
+        _is_legal (bool): Indicator of whether the position is legal or not i.e. on the board.
     """
 
     __row_names = "12345678"
@@ -250,10 +250,30 @@ class Position:
              row (int): Row number of the position.
              col (int): Column number of the position.
         """
-        self.row = row
-        self.col = col
-        self.name = self._set_name()
-        self.is_legal = self._check_legality()
+        self._row = row
+        self._col = col
+        self._name = self._set_name()
+        self._is_legal = self._check_legality()
+
+    @property
+    def row(self):
+        """Get method for the 'row' property."""
+        return self._row
+
+    @property
+    def col(self):
+        """Get method for the 'col' property."""
+        return self._col
+
+    @property
+    def name(self):
+        """Get method for the 'name' property."""
+        return self._name
+
+    @property
+    def is_legal(self):
+        """Get method for the 'is_legal' property."""
+        return self._is_legal
 
     def __repr__(self):
         """Repr method for the Position class."""
