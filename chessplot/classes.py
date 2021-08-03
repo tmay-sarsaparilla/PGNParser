@@ -27,7 +27,7 @@ class Piece:
         position (Position): Current position of the piece.
         move_metric (list): List of directions the piece can move in.
         _has_moved (bool): Indicator of whether the piece has moved or not.
-        _position_history (tuple): Tuple of positions the piece has occupied and the move number.
+        position_history (tuple): Tuple of positions the piece has occupied and the move number.
     """
 
     __valid_piece_names = ["P", "N", "B", "R", "Q", "K"]
@@ -75,7 +75,7 @@ class Piece:
         self.position = Position(row=row, col=col)
         self.move_metric = self._set_move_metric()
         self._has_moved = False
-        self._position_history = [(0, self.position)]
+        self.position_history = [(0, self.position)]
 
     def __repr__(self):
         """Repr method for the Piece class."""
@@ -126,7 +126,7 @@ class Piece:
             move_number (int): The current move number in the game.
         """
         self.position = Position(row=row, col=col)
-        self._position_history.append((move_number, self.position))
+        self.position_history.append((move_number, self.position))
         self._has_moved = True
         return
 
@@ -175,8 +175,13 @@ class Piece:
                 situational_directions.append(direction)       # a capture is possible
 
         # En passant only applies to pawns on the 6th row (for white) and the 3rd row (for black)
-        if (self.is_white and self.position.row != 5) or (not self.is_white and self.position.row != 2):
+        if self.is_white:
+            en_passant_applicable = self.position.row == 4
+        else:
+            en_passant_applicable = self.position.row == 3
+        if not en_passant_applicable:
             return situational_directions
+
         for direction in capture_moves:
             position = Position(  # check adjacent squares in the same column as the pawn
                 row=self.position.row,
@@ -184,9 +189,11 @@ class Piece:
             )
             if not position.is_legal:
                 continue
+
             position_inhabitant = board[position.row, position.col]
             if position_inhabitant is None:  # if there is no piece skip
                 continue
+
             can_capture = (
                     position_inhabitant.is_white != self.is_white  # opponent colour
                     and position_inhabitant.rank == "P"  # is a pawn
@@ -421,7 +428,7 @@ class Game:
 
         return board
 
-    def _move_piece(self, piece, row, col, promoted_piece_rank=None):
+    def _move_piece(self, piece, row, col, promoted_piece_rank=None, is_capture=False):
         """
         Move a piece on the board.
 
@@ -429,11 +436,18 @@ class Game:
             piece (Piece): The piece to be moved.
             row (int): The row number to move the piece to.
             col (int): The column number to move the piece to.
-            promoted_piece_rank (str): Rank of piece to promote to (if any).
+            promoted_piece_rank (str): Rank of piece to promote to (default None).
+            is_capture (bool): Indicator for whether the move is a capture or not (default False).
         """
         current_row = piece.position.row
         current_col = piece.position.col
 
+        if is_capture and self._board[row, col] is None:
+            en_passant = True
+        else:
+            en_passant = False
+
+        self._move_count += 1
         self._board[current_row, current_col] = None
         piece.update_position(row=row, col=col, move_number=self._move_count)
         if promoted_piece_rank is not None:  # if pawn promotion, create a new piece at the new position
@@ -442,7 +456,9 @@ class Game:
             self._board[row, col] = new_piece
         else:  # otherwise move the existing piece
             self._board[row, col] = piece
-        self._move_count += 1
+
+        if en_passant:
+            self._board[current_row, col] = None  # if en passant capture, remove the captured piece
         return
 
     def _castle(self, white_to_move, castle_king_side):
@@ -576,6 +592,7 @@ class Game:
         new_col = int(col_names.index(new_col_str))
         new_row = int(row_names.index(new_row_str))
         new_position = Position(row=new_row, col=new_col)
+        is_capture = True if "x" in move_string else False
 
         candidate_pieces = []
         for row in range(0, 8):
@@ -597,7 +614,8 @@ class Game:
                 piece=candidate_pieces[0],
                 row=new_row,
                 col=new_col,
-                promoted_piece_rank=promoted_piece_rank
+                promoted_piece_rank=promoted_piece_rank,
+                is_capture=is_capture
             )
             return
         elif len(candidate_pieces) >= 2:
@@ -606,21 +624,39 @@ class Game:
                     piece for piece in candidate_pieces
                     if piece.position.name == piece_col + piece_row
                 ]
-                self._move_piece(piece=piece, row=new_row, col=new_col, promoted_piece_rank=promoted_piece_rank)
+                self._move_piece(
+                    piece=piece,
+                    row=new_row,
+                    col=new_col,
+                    promoted_piece_rank=promoted_piece_rank,
+                    is_capture=is_capture
+                )
                 return
             elif piece_row is not None:
                 piece, = [
                     piece for piece in candidate_pieces
                     if piece.position.row == int(row_names.index(piece_row))
                 ]
-                self._move_piece(piece=piece, row=new_row, col=new_col, promoted_piece_rank=promoted_piece_rank)
+                self._move_piece(
+                    piece=piece,
+                    row=new_row,
+                    col=new_col,
+                    promoted_piece_rank=promoted_piece_rank,
+                    is_capture=is_capture
+                )
                 return
             elif piece_col is not None:
                 piece, = [
                     piece for piece in candidate_pieces
                     if piece.position.col == int(col_names.index(piece_col))
                 ]
-                self._move_piece(piece=piece, row=new_row, col=new_col, promoted_piece_rank=promoted_piece_rank)
+                self._move_piece(
+                    piece=piece,
+                    row=new_row,
+                    col=new_col,
+                    promoted_piece_rank=promoted_piece_rank,
+                    is_capture=is_capture
+                )
                 return
 
         raise ValueError(f"Invalid move: {move_string}")
