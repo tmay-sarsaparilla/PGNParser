@@ -499,67 +499,69 @@ class Game:
         new_row_str = None
         promoted_piece_rank = None
 
-        if re.match("[a-h][1-8]", string=move_string):  # pawn move
+        move_string = move_string.replace("+", "").replace("#", "")  # remove check indicators
+
+        if re.match("^[a-h][1-8]$", string=move_string):  # pawn move
             piece_rank = "P"
             new_col_str = move_string[0]
             new_row_str = move_string[1]
-        elif re.match("[a-h]x[a-h][1-8]", string=move_string):  # pawn capture
+        elif re.match("^[a-h]x[a-h][1-8]$", string=move_string):  # pawn capture
             piece_rank = "P"
             piece_col = move_string[0]
             new_col_str = move_string[2]
             new_row_str = move_string[3]
-        elif re.match("[a-h][1-8]=[NBRQ]", string=move_string):  # pawn promotion
+        elif re.match("^[a-h][1-8]=[NBRQ]$", string=move_string):  # pawn promotion
             piece_rank = "P"
             new_col_str = move_string[0]
             new_row_str = move_string[1]
             promoted_piece_rank = move_string[3]
-        elif re.match("[a-h]x[a-h][1-8]=[NBRQ]", string=move_string):  # pawn promotion
+        elif re.match("^[a-h]x[a-h][1-8]=[NBRQ]$", string=move_string):  # pawn promotion
             piece_rank = "P"
             piece_col = move_string[0]
             new_col_str = move_string[2]
             new_row_str = move_string[3]
             promoted_piece_rank = move_string[5]
-        elif re.match("[NBRQK][a-h][1-8]", string=move_string):  # piece move
+        elif re.match("^[NBRQK][a-h][1-8]$", string=move_string):  # piece move
             piece_rank = move_string[0]
             new_col_str = move_string[1]
             new_row_str = move_string[2]
-        elif re.match("[NBRQK][a-h][a-h][1-8]", string=move_string):  # piece move, ambiguous column
+        elif re.match("^[NBRQK][a-h][a-h][1-8]$", string=move_string):  # piece move, ambiguous column
             piece_rank = move_string[0]
             piece_col = move_string[1]
             new_col_str = move_string[2]
             new_row_str = move_string[3]
-        elif re.match("[NBRQK][1-8][a-h][1-8]", string=move_string):  # piece move, ambiguous row
+        elif re.match("^[NBRQK][1-8][a-h][1-8]$", string=move_string):  # piece move, ambiguous row
             piece_rank = move_string[0]
             piece_row = move_string[1]
             new_col_str = move_string[2]
             new_row_str = move_string[3]
-        elif re.match("[NBRQK][a-h][1-8][a-h][1-8]", string=move_string):  # piece move, ambiguous row and column
+        elif re.match("^[NBRQK][a-h][1-8][a-h][1-8]$", string=move_string):  # piece move, ambiguous row and column
             piece_rank = move_string[0]
             piece_col = move_string[1]
             piece_row = move_string[2]
             new_col_str = move_string[3]
             new_row_str = move_string[4]
-        elif re.match("[NBRQK]x[a-h][1-8]", string=move_string):  # piece capture
+        elif re.match("^[NBRQK]x[a-h][1-8]$", string=move_string):  # piece capture
             piece_rank = move_string[0]
             new_col_str = move_string[2]
             new_row_str = move_string[3]
-        elif re.match("[NBRQK][a-h]x[a-h][1-8]", string=move_string):  # piece capture, ambiguous column:
+        elif re.match("^[NBRQK][a-h]x[a-h][1-8]$", string=move_string):  # piece capture, ambiguous column:
             piece_rank = move_string[0]
             piece_col = move_string[1]
             new_col_str = move_string[3]
             new_row_str = move_string[4]
-        elif re.match("[NBRQK][1-8]x[a-h][1-8]", string=move_string):  # piece capture, ambiguous row:
+        elif re.match("^[NBRQK][1-8]x[a-h][1-8]$", string=move_string):  # piece capture, ambiguous row:
             piece_rank = move_string[0]
             piece_row = move_string[1]
             new_col_str = move_string[3]
             new_row_str = move_string[4]
-        elif re.match("[NBRQK][a-h][1-8]x[a-h][1-8]", string=move_string):  # piece capture, ambiguous row and column:
+        elif re.match("^[NBRQK][a-h][1-8]x[a-h][1-8]$", string=move_string):  # piece capture, ambiguous row and column:
             piece_rank = move_string[0]
             piece_col = move_string[1]
             piece_row = move_string[2]
             new_col_str = move_string[4]
             new_row_str = move_string[5]
-        elif re.match("O-O|0-0", string=move_string):  # castle
+        elif re.match("^O-O$|^0-0$|^O-O-O$|^0-0-0$", string=move_string):  # castle
             if move_string == "O-O" or move_string == "0-0":
                 castle_king_side = True
             else:
