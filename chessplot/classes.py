@@ -669,10 +669,10 @@ class Game:
         Draw an image of the board in its current state.
 
         Parameter:
-            move_string (str): A string describing the move being drawn.
+            ply_string (str): A string describing the move being drawn.
 
         Returns:
-            frame (Image): An image depicting the game board in its current state.
+            frame (Image.Image): An image depicting the game board in its current state.
         """
         square_width = 60
         frame = Image.new(mode="RGB", size=(square_width * 10, int(square_width * 11.667)), color="white")
@@ -811,7 +811,14 @@ class ChessPlot:
         Returns:
             tags (dict): A dictionary of metadata tags and their values.
             moves (list): A list of pairs of ply played during the game.
+
+        Raises:
+            ValueError: If given file is not a .pgn | If file contains no move set
+            FileNotFoundError: If given path is not valid
         """
+
+        if not file_path.endswith(".pgn"):
+            raise ValueError(f"File {file_path} is not a valid .pgn.")
         file = open(file_path, "r")
         tags = {}
         moves_string = ""
