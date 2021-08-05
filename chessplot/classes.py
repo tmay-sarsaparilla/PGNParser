@@ -172,7 +172,7 @@ class Piece:
             if position_inhabitant is None:  # if there is no piece, skip
                 continue
             if position_inhabitant.is_white != self.is_white:  # if the piece is of the opposite colour
-                situational_directions.append(direction)       # a capture is possible
+                situational_directions.append(direction)  # a capture is possible
 
         # En passant only applies to pawns on the 6th row (for white) and the 3rd row (for black)
         if self.is_white:
@@ -394,7 +394,7 @@ class Game:
         Returns:
             date (str): A formatted version of the original date field.
         """
-        year, month, day = self._date.split(".")
+        year, month, day = self._date.replace(".", "-").split("-")
         if year == "??":
             date = None
         elif month == "??":
@@ -751,7 +751,7 @@ class Game:
                 if i == 0:
                     draw.text(
                         xy=(x_origin - square_width * 0.5, y_origin + square_width * j + square_width * 0.5),
-                        text="12345678"[7-j],
+                        text="12345678"[7 - j],
                         anchor="mm",
                         align="right",
                         font=move_text_font,
@@ -780,9 +780,12 @@ class ChessPlot:
     Attributes:
         _pgn (str): A path to a .pgn file to be plotted.
         _tags (dict): A set of metadata tags from the input .pgn file.
-        _move_pairs (list): A set of pairs of moves played during the game from the input .pgn file.
+        _moves (list): A set of pairs of moves played during the game from the input .pgn file.
         _frames (list): A list of images, one for each of the moves played during the game.
     """
+
+    __end_states = ["1-0", "0-1", "1/2-1/2"]
+
     def __init__(self, pgn):
         """
         Constructor for the ChessPlot class.
@@ -791,7 +794,7 @@ class ChessPlot:
             pgn (str): A path to a .pgn file to be plotted.
         """
         self._pgn = pgn
-        self._tags, self._move_pairs = self._parse_file(file_path=pgn)
+        self._tags, self._moves = self._parse_file(file_path=pgn)
         self._frames = self._draw_frames()
 
     @staticmethod
@@ -804,54 +807,55 @@ class ChessPlot:
 
         Returns:
             tags (dict): A dictionary of metadata tags and their values.
-            move_pairs (list): A list of pairs of moves played during the game.
+            moves (list): A list of pairs of moves played during the game.
         """
         file = open(file_path, "r")
         tags = {}
-        moves = None
+        moves = ""
         for line in file:
-            if line[0] == "[":  # extract metadata tags
-                for char in ["[", "]", '"', "\n"]:
-                    line = line.replace(char, "")
-
-                key, value = line.split(" ", 1)
+            tag_search = re.search(r"\[(.*)]", line)
+            if tag_search is not None:
+                tag = tag_search.group(1)
+                tag = tag.replace('"', "")
+                key, value = tag.split(" ", 1)
                 tags[key] = value
             else:  # extract move set
-                moves = file.read()
-                break
-        if moves is None:
+                moves += line
+                if line.endswith(tuple(ChessPlot.__end_states)):
+                    break
+        if not moves:
             raise ValueError(f"File {file_path} contains no move set")
 
         moves = moves.replace("\n", " ")
-        move_pairs = [
-            [move for move in pair.strip().split(" ") if move != ""]
-            for pair in re.split("\\d+\\.", moves) if pair != ''
+        moves = [
+            [ply for ply in move.strip().split(" ") if ply != ""]
+            for move in re.split("\\d+\\.", moves) if move != ''
         ]
 
-        return tags, move_pairs
+        return tags, moves
 
     def _draw_frames(self):
         """
-        Draw a list of frames, one for each move played in the game.
+        Draw a list of frames, one for each ply played in the game.
 
         Returns:
-            frames (list): A list of frames, one for each move in the game.
+            frames (list): A list of frames, one for each ply in the game.
         """
         white_to_move = True
         game = Game(tags=self._tags)
         frames = [game.draw_board()]  # add starting position image
-        move_count = 0
-        for pair in self._move_pairs:
-            move_count += 1
-            for move in pair:
-                if move in ["1-0", "0-1", "1/2-1/2"]:
+        ply_count = 0
+        for pair in self._moves:
+            ply_count += 1
+            for ply in pair:
+                if ply in ChessPlot.__end_states:
                     break
                 if white_to_move:
-                    move_string = f"{move_count}. {move}"
+                    move_string = f"{ply_count}. {ply}"
                 else:
-                    move_string = f"{move_count}... {move}"
+                    move_string = f"{ply_count}... {ply}"
 
-                game.execute_move(move_string=move, white_to_move=white_to_move)
+                game.execute_move(move_string=ply, white_to_move=white_to_move)
                 frames.append(game.draw_board(move_string=move_string))
                 white_to_move = not white_to_move
         return frames
