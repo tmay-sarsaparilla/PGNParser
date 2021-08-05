@@ -326,80 +326,28 @@ class Game:
 
     Attributes:
         _fen (str): A FEN string for the starting position of the game.
-        _event (str): The event the game was played at.
-        _site (str): The location the game was played at.
-        _date (str): The date the game was played on.
-        _formatted_date (str): A formatted version of the date.
-        _event_round (str): The round of the event the game was played in.
-        _white (str): The name of the player with the white pieces.
-        _black (str): The name of the player with the black pieces.
-        _white_elo (str): The Elo rating of the player with the white pieces.
-        _black_elo (str): The Elo rating of the player with the black pieces.
-        _result (str): The final result of the game.
-        _board (np.ndarray): The game board.
+        board (np.ndarray): The game board.
         _ply_count (int): A count of the number of moves played in the game.
     """
 
     __default_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
 
-    def __init__(self, tags: Dict[str, str]) -> None:
+    def __init__(self, fen: str) -> None:
         """
         Constructor method for the Game class.
 
         Parameters:
-            tags (dict): A dictionary of metadata tags from a .pgn file.
+            fen (str): A FEN string describing the initial state of the board.
         """
-        self._tags = tags
-        self._fen = self._get_tag_value(tag_key="FEN", default_value=Game.__default_fen)
-        self._event = self._get_tag_value(tag_key="Event")
-        self._site = self._get_tag_value(tag_key="Site")
-        self._date = self._get_tag_value(tag_key="Date")
-        self._event_round = self._get_tag_value(tag_key="Round")
-        self._white = self._get_tag_value(tag_key="White", default_value="Unknown")
-        self._black = self._get_tag_value(tag_key="Black", default_value="Unknown")
-        self._white_elo = self._get_tag_value(tag_key="WhiteElo")
-        self._black_elo = self._get_tag_value(tag_key="BlackElo")
-        self._result = self._get_tag_value(tag_key="Result")
-        self._formatted_date = self._format_date()
-        self._board = self._generate_board()
+        self._fen = fen if fen is not None else Game.__default_fen
+        self.board = self._generate_board()
         self._ply_count = 0
 
     def __repr__(self) -> str:
         """Repr method for the Game class."""
-        print_grid = np.vstack(([["h", "g", "f", "e", "d", "c", "b", "a"]], self._board))
+        print_grid = np.vstack(([["h", "g", "f", "e", "d", "c", "b", "a"]], self.board))
         print_grid = np.hstack((print_grid, [[" "], ["1"], ["2"], ["3"], ["4"], ["5"], ["6"], ["7"], ["8"]]))
         return str(np.flip(print_grid)).replace("None", " - ") + "\n"
-
-    def _get_tag_value(self, tag_key: str, default_value: str = "") -> str:
-        """
-        Get the value corresponding to a given tag key.
-
-        Parameters:
-            tag_key (str): The key of the desired tag.
-            default_value (str): The default value in the event that the tag is not present.
-        """
-        try:
-            return self._tags[tag_key]
-        except KeyError:
-            return default_value
-
-    def _format_date(self) -> str:
-        """
-        Format game date.
-
-        Returns:
-            date (str): A formatted version of the original date field.
-        """
-        year, month, day = self._date.replace(".", "-").split("-")
-        if year == "??":
-            date = None
-        elif month == "??":
-            date = year
-        elif day == "??":
-            date = datetime.date(int(year), int(month), 0).strftime("%A %d %B %Y")
-        else:
-            date = datetime.date(int(year), int(month), int(day)).strftime("%A %d %B %Y")
-        return date
 
     def _generate_board(self) -> np.ndarray:
         """
@@ -445,23 +393,23 @@ class Game:
         current_row = piece.position.row
         current_col = piece.position.col
 
-        if is_capture and self._board[row, col] is None:
+        if is_capture and self.board[row, col] is None:
             en_passant = True
         else:
             en_passant = False
 
         self._ply_count += 1
-        self._board[current_row, current_col] = None
+        self.board[current_row, current_col] = None
         piece.update_position(row=row, col=col, ply_number=self._ply_count)
         if promoted_piece_rank is not None:  # if pawn promotion, create a new piece at the new position
             new_piece_name = promoted_piece_rank.lower() if not piece.is_white else promoted_piece_rank
             new_piece = Piece(name=new_piece_name, row=row, col=col)
-            self._board[row, col] = new_piece
+            self.board[row, col] = new_piece
         else:  # otherwise move the existing piece
-            self._board[row, col] = piece
+            self.board[row, col] = piece
 
         if en_passant:
-            self._board[current_row, col] = None  # if en passant capture, remove the captured piece
+            self.board[current_row, col] = None  # if en passant capture, remove the captured piece
         return
 
     def _castle(self, white_to_move: bool, castle_king_side: bool) -> None:
@@ -473,17 +421,17 @@ class Game:
             castle_king_side (bool): Indicator of whether to castle king-side or not.
         """
         if white_to_move:
-            king = self._board[0, 3]
+            king = self.board[0, 3]
             if castle_king_side:
-                rook = self._board[0, 0]
+                rook = self.board[0, 0]
             else:
-                rook = self._board[0, 7]
+                rook = self.board[0, 7]
         else:
-            king = self._board[7, 3]
+            king = self.board[7, 3]
             if castle_king_side:
-                rook = self._board[7, 0]
+                rook = self.board[7, 0]
             else:
-                rook = self._board[7, 7]
+                rook = self.board[7, 7]
 
         if castle_king_side:
             self._move_piece(piece=king, row=king.position.row, col=king.position.col - 2)
@@ -600,14 +548,14 @@ class Game:
         candidate_pieces = []
         for row in range(0, 8):
             for col in range(0, 8):
-                piece = self._board[row, col]
+                piece = self.board[row, col]
                 if piece is None:  # if square is empty, skip
                     continue
                 if piece.is_white != white_to_move:  # if piece is the wrong colour, skip
                     continue
                 is_candidate_piece = (
                         piece.rank == piece_rank
-                        and new_position in piece.get_possible_positions(self._board, ply_number=self._ply_count)
+                        and new_position in piece.get_possible_positions(self.board, ply_number=self._ply_count)
                 )
                 if is_candidate_piece:
                     candidate_pieces.append(piece)
@@ -664,118 +612,6 @@ class Game:
 
         raise ValueError(f"Invalid move: {ply_string}")
 
-    def draw_board(self, ply_string: str = "") -> Image.Image:
-        """
-        Draw an image of the board in its current state.
-
-        Parameter:
-            ply_string (str): A string describing the move being drawn.
-
-        Returns:
-            frame (Image.Image): An image depicting the game board in its current state.
-        """
-        square_width = 60
-        frame = Image.new(mode="RGB", size=(square_width * 10, int(square_width * 11.667)), color="white")
-        unicode_font = ImageFont.truetype("seguisym.ttf", 50)
-        black_square_colour = "#276996"
-        white_square_colour = "#e2e7ee"
-        draw = ImageDraw.ImageDraw(im=frame)
-
-        x_origin, y_origin = square_width, square_width * 2.667
-
-        # title text
-        title_font = ImageFont.truetype("arial.ttf", 24)
-        if self._white_elo != "" and self._black_elo != "":
-            title_text = f"{self._white} ({self._white_elo}) - {self._black} ({self._black_elo})"
-        else:
-            title_text = f"{self._white} - {self._black}"
-        draw.text(
-            xy=(x_origin + square_width * 4, y_origin - square_width * 2),
-            text=title_text,
-            anchor="ms",
-            align="center",
-            font=title_font,
-            fill="black"
-        )
-
-        # sub-title text
-        sub_title_font = ImageFont.truetype("ariali.ttf", 18)
-        sub_title_text = f"{self._site}, {self._formatted_date}" if self._formatted_date is not None else self._site
-        draw.text(
-            xy=(x_origin + square_width * 4, y_origin - square_width * 1.5),
-            text=sub_title_text,
-            anchor="ms",
-            align="center",
-            font=sub_title_font,
-            fill="black"
-        )
-
-        # result text
-        result_font = ImageFont.truetype("arialbd.ttf", 18)
-        result_text = self._result
-        draw.text(
-            xy=(x_origin + square_width * 4, y_origin - square_width * 1),
-            text=result_text,
-            anchor="ms",
-            align="center",
-            font=result_font,
-            fill="black"
-        )
-
-        # move text
-        move_text_font = ImageFont.truetype("arial.ttf", 20)
-        draw.text(
-            xy=(x_origin, y_origin - square_width * 0.667),
-            text=ply_string,
-            align="left",
-            font=move_text_font,
-            fill="black"
-        )
-
-        for i in range(0, 8):
-            for j in range(0, 8):
-                piece = self._board[7 - i, 7 - j]
-                x = x_origin + square_width * j
-                y = y_origin + square_width * i
-                square_colour = white_square_colour if (i + j) % 2 == 0 else black_square_colour
-                draw.rectangle(xy=((x, y), (x + square_width, y + square_width)), fill=square_colour)
-                if piece is not None:
-                    draw.text(
-                        xy=(
-                            x_origin + square_width * j + square_width * 0.5,
-                            y_origin + square_width * i + square_width * 0.5
-                        ),
-                        text=piece.unicode,
-                        anchor="mm",
-                        align="center",
-                        font=unicode_font,
-                        fill="black"
-                    )
-                if i == 0:
-                    draw.text(
-                        xy=(x_origin - square_width * 0.5, y_origin + square_width * j + square_width * 0.5),
-                        text="12345678"[7 - j],
-                        anchor="mm",
-                        align="right",
-                        font=move_text_font,
-                        fill="black",
-                        stroke_width=0
-                    )
-                if j == 7:
-                    draw.text(
-                        xy=(
-                            x_origin + square_width * i + square_width * 0.5,
-                            y_origin + square_width * 8 + square_width * 0.5
-                        ),
-                        text="abcdefgh"[i],
-                        anchor="mm",
-                        align="center",
-                        font=move_text_font,
-                        fill="black",
-                        stroke_width=0
-                    )
-        return frame
-
 
 class ChessPlot:
     """A class for plots of chess games.
@@ -784,20 +620,65 @@ class ChessPlot:
         _pgn (str): A path to a .pgn file to be plotted.
         _tags (dict): A set of metadata tags from the input .pgn file.
         _moves (list): A set of pairs of moves played during the game from the input .pgn file.
+        _fen (str): A FEN string of the starting position of the game.
+        _event (str): The event at which the game took place.
+        _site (str): The location where the game took place.
+        _date (str): The date on which the game took place. Unknown fields are populated with '??'.
+        _event_round (str): The round in which the game took place.
+        _white (str): The name of the player with the white pieces.
+        _black (str): The name of the player with the black pieces.
+        _white_elo (str): The Elo rating of the player with the white pieces.
+        _black_elo (str): The Elo rating of the player with the black pieces.
+        _result (str): The result of the game. Valid results are 1-0, 0-1, or 1/2-1/2.
+        _formatted_date (str): A formatted version of the game date.
+        _black_square_colour (str): A hex code for the colour of black squares in the plot.
+        _white_square_colour (str): A hex code for the colour of white squares in the plot.
+        _board_only (bool): Indicator of whether only the board should be plotted or not.
+        _black_perspective (bool): Indicator of whether the game should be shown from the perspective
+            of the black pieces or not.
+        _plot_size (int): The size of the plot to be produced.
+        _header_image (Image.Image): A header image for each frame of a plot.
         _frames (list): A list of images, one for each of the moves played during the game.
     """
 
     __end_states = ["1-0", "0-1", "1/2-1/2"]
 
-    def __init__(self, pgn: str) -> None:
+    def __init__(
+            self,
+            pgn: str,
+            plot_size: int = 600,
+            board_only: bool = False,
+            black_perspective: bool = False
+    ) -> None:
         """
         Constructor for the ChessPlot class.
 
         Parameters:
             pgn (str): A path to a .pgn file to be plotted.
+            plot_size (int): Size of the plot to be created.
+            board_only (bool): Indicator of whether only the board should be drawn or not (default False).
+            black_perspective (bool): Indicator of whether to draw the game from the perspective of the
+                black pieces or not (default False).
         """
         self._pgn = pgn
         self._tags, self._moves = self._parse_file(file_path=pgn)
+        self._fen = self._get_tag_value(tag_key="FEN") if self._get_tag_value(tag_key="FEN") != "" else None
+        self._event = self._get_tag_value(tag_key="Event")
+        self._site = self._get_tag_value(tag_key="Site")
+        self._date = self._get_tag_value(tag_key="Date")
+        self._event_round = self._get_tag_value(tag_key="Round")
+        self._white = self._get_tag_value(tag_key="White", default_value="Unknown")
+        self._black = self._get_tag_value(tag_key="Black", default_value="Unknown")
+        self._white_elo = self._get_tag_value(tag_key="WhiteElo")
+        self._black_elo = self._get_tag_value(tag_key="BlackElo")
+        self._result = self._get_tag_value(tag_key="Result")
+        self._formatted_date = self._format_date()
+        self._black_square_colour = "#276996"
+        self._white_square_colour = "#e2e7ee"
+        self._board_only = board_only
+        self._black_perspective = black_perspective
+        self._plot_size = plot_size
+        self._header_image = None
         self._frames = self._draw_frames()
 
     @staticmethod
@@ -844,6 +725,283 @@ class ChessPlot:
 
         return tags, moves
 
+    def _get_tag_value(self, tag_key: str, default_value: str = "") -> str:
+        """
+        Get the value corresponding to a given tag key.
+
+        Parameters:
+            tag_key (str): The key of the desired tag.
+            default_value (str): The default value in the event that the tag is not present.
+        """
+        try:
+            return self._tags[tag_key]
+        except KeyError:
+            return default_value
+
+    def _format_date(self) -> str:
+        """
+        Format game date.
+
+        Returns:
+            date (str): A formatted version of the original date field.
+        """
+        year, month, day = self._date.replace(".", "-").split("-")
+        if year == "??":
+            date = None
+        elif month == "??":
+            date = year
+        elif day == "??":
+            date = datetime.date(int(year), int(month), 0).strftime("%A %d %B %Y")
+        else:
+            date = datetime.date(int(year), int(month), int(day)).strftime("%A %d %B %Y")
+        return date
+
+    @staticmethod
+    def _scale_font(text: str, font_name: str, max_width: int, max_height: int) -> ImageFont.truetype:
+        """
+        Scale a font to fit a given piece of text within a bounding box.
+
+        Parameters:
+            text (str): The text to be fitted.
+            font_name (str): The name of the font.
+            max_width (int): The maximum width of the scaled text.
+            max_height (int): The maximum height of the scaled text.
+
+        Returns:
+            font (ImageFont.truetype): A font object scaled to the correct size.
+        """
+
+        # TODO: Find a more optimal way of scaling fonts
+        font_size = 12
+        font = ImageFont.truetype(font=font_name, size=font_size)
+        text_width, text_height = font.getsize(text=text)
+
+        while text_width < max_width and text_height < max_height:
+            font_size += 2
+            font = ImageFont.truetype(font=font_name, size=font_size)
+            text_width, text_height = font.getsize(text=text)
+
+        return font
+
+    def _draw_board(
+            self,
+            board: np.ndarray,
+            square_width: int,
+            ply_string: str = "",
+    ) -> Image.Image:
+        """
+        Draw an image of a given game board.
+
+        The image will be a 10x10 grid of square_width. If black_perspective is True, the board is flipped in the image.
+
+        Parameters:
+            board (np.ndarray): The game board to be drawn.
+            square_width (int): The width of the squares on the board.
+            ply_string (str): A string describing the ply being drawn e.g. 1. e4.
+
+        Returns:
+            image (Image.Image): An image of the board.
+        """
+
+        image = Image.new(mode="RGB", size=(square_width * 10, square_width * 10), color="white")
+        draw = ImageDraw.ImageDraw(im=image)
+        square_name_font = self._scale_font(
+            text="a",
+            font_name="arial.ttf",
+            max_width=int(square_width * 0.4),
+            max_height=int(square_width * 0.4)
+        )
+        unicode_font = self._scale_font(
+            text="♔",
+            font_name="seguisym.ttf",
+            max_width=square_width,
+            max_height=square_width
+        )
+
+        x_origin, y_origin = square_width, square_width
+
+        # move text
+        move_text_font = self._scale_font(
+            text="1. e4",
+            font_name="arial.ttf",
+            max_width=int(square_width * 0.8),
+            max_height=int(square_width * 0.8)
+        )
+        draw.text(
+            xy=(x_origin, y_origin * 0.5),
+            text=ply_string,
+            align="left",
+            font=move_text_font,
+            fill="black"
+        )
+
+        if not self._black_perspective:
+            board = np.flip(board)
+
+        for row in range(0, 8):
+            for col in range(0, 8):
+                piece = board[row, col]
+                x = x_origin + square_width * col
+                y = y_origin + square_width * row
+                square_colour = self._white_square_colour if (row + col) % 2 == 0 else self._black_square_colour
+                draw.rectangle(xy=((x, y), (x + square_width, y + square_width)), fill=square_colour)
+                if piece is not None:
+                    draw.text(
+                        xy=(
+                            x_origin + square_width * col + square_width * 0.5,
+                            y_origin + square_width * row + square_width * 0.5
+                        ),
+                        text=piece.unicode,
+                        anchor="mm",
+                        align="center",
+                        font=unicode_font,
+                        fill="black"
+                    )
+                if col == 0:
+                    if self._black_perspective:
+                        row_text = "12345678"[row]
+                    else:
+                        row_text = "12345678"[7 - row]
+                    draw.text(
+                        xy=(x_origin - square_width * 0.5, y_origin + square_width * row + square_width * 0.5),
+                        text=row_text,
+                        anchor="mm",
+                        align="right",
+                        font=square_name_font,
+                        fill="black",
+                        stroke_width=0
+                    )
+                if row == 7:
+                    if self._black_perspective:
+                        col_text = "abcdefgh"[7 - col]
+                    else:
+                        col_text = "abcdefgh"[col]
+                    draw.text(
+                        xy=(
+                            x_origin + square_width * col + square_width * 0.5,
+                            y_origin + square_width * 8 + square_width * 0.5
+                        ),
+                        text=col_text,
+                        anchor="mm",
+                        align="center",
+                        font=square_name_font,
+                        fill="black",
+                        stroke_width=0
+                    )
+        return image
+
+    def _draw_header(self, header_width: int, header_height: int) -> Image.Image:
+        """
+        Draw a header for all frames including game metadata.
+
+        Metadata includes:
+        - Player names
+        - Player Elo ratings
+        - Game venue
+        - Game date
+        - Game result
+
+        Parameters:
+            header_width (int): The width of the header to be drawn.
+            header_height (int): The height of the header to be drawn.
+
+        Returns:
+            image (Image.Image): An image of the header.
+        """
+
+        image = Image.new(mode="RGB", size=(header_width, header_height), color="white")
+        draw = ImageDraw.ImageDraw(im=image)
+
+        header_centre = header_width / 2
+
+        # title text
+        if self._white_elo != "" and self._black_elo != "":
+            title_text = f"{self._white} ({self._white_elo}) - {self._black} ({self._black_elo})"
+        else:
+            title_text = f"{self._white} - {self._black}"
+
+        title_font = self._scale_font(
+            text=title_text,
+            font_name="arial.ttf",
+            max_width=int(header_width * 0.8),
+            max_height=int(header_height * 0.5)
+        )
+        draw.text(
+            xy=(header_centre, header_height * 0.4),
+            text=title_text,
+            anchor="ms",
+            align="center",
+            font=title_font,
+            fill="black"
+        )
+
+        # sub-title text
+        sub_title_text = f"{self._site}, {self._formatted_date}" if self._formatted_date is not None else self._site
+        sub_title_font = self._scale_font(
+            text=sub_title_text,
+            font_name="ariali.ttf",
+            max_width=int(header_width * 0.8),
+            max_height=int(header_height * 0.25)
+        )
+        draw.text(
+            xy=(header_centre, header_height * 0.7),
+            text=sub_title_text,
+            anchor="ms",
+            align="center",
+            font=sub_title_font,
+            fill="black"
+        )
+
+        # result text
+        result_text = self._result
+        result_font = self._scale_font(
+            text=result_text,
+            font_name="arialbd.ttf",
+            max_width=int(header_width * 0.8),
+            max_height=int(header_height * 0.25)
+        )
+        draw.text(
+            xy=(header_centre, header_height * 0.95),
+            text=result_text,
+            anchor="ms",
+            align="center",
+            font=result_font,
+            fill="black"
+        )
+
+        return image
+
+    def _draw(self, board: np.ndarray, ply_string: str = "") -> Image.Image:
+        """
+        Draw an image of the board in its current state.
+
+        Parameter:
+            board (np.ndarray): The game board state following the ply being drawn.
+            ply_string (str): A string describing the ply being drawn.
+
+        Returns:
+            frame (Image.Image): An image depicting the game board in its current state.
+        """
+
+        square_width = int(self._plot_size / 10)
+
+        board_image = self._draw_board(
+            board=board,
+            square_width=square_width,
+            ply_string=ply_string,
+        )
+
+        if self._board_only:
+            return board_image
+
+        header_height = self._header_image.size[1]
+
+        frame = Image.new(mode="RGB", size=(self._plot_size, self._plot_size + header_height), color="white")
+        frame.paste(board_image, (0, header_height))
+        frame.paste(self._header_image, (0, 0))
+
+        return frame
+
     def _draw_frames(self) -> List[Image.Image]:
         """
         Draw a list of frames, one for each ply played in the game.
@@ -852,8 +1010,14 @@ class ChessPlot:
             frames (list): A list of frames, one for each ply in the game.
         """
         white_to_move = True
-        game = Game(tags=self._tags)
-        frames = [game.draw_board()]  # add starting position image
+        game = Game(fen=self._fen)
+        if not self._board_only:
+            header_height = int(self._plot_size * 0.15)
+            self._header_image = self._draw_header(
+                header_width=self._plot_size,
+                header_height=header_height,
+            )
+        frames = [self._draw(board=game.board)]  # add starting position image
         ply_count = 0
         for pair in self._moves:
             ply_count += 1
@@ -866,7 +1030,7 @@ class ChessPlot:
                     move_string = f"{ply_count}... {ply}"
 
                 game.execute_move(ply_string=ply, white_to_move=white_to_move)
-                frames.append(game.draw_board(ply_string=move_string))
+                frames.append(self._draw(board=game.board, ply_string=move_string))
                 white_to_move = not white_to_move
         return frames
 
