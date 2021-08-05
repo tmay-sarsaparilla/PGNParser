@@ -1,18 +1,93 @@
 """
 Module containing all classes used by the chessplot package.
-
-Classes:
-
-    Piece
-    Position
-    Game
-    ChessPlot
 """
 
 import numpy as np
 import re
 import datetime
+from typing import List, Tuple, Dict
 from PIL import Image, ImageDraw, ImageFont
+
+
+class Position:
+    """
+    A class for piece positions.
+
+    Attributes:
+        _row (int): The row number of the position.
+        _col (int): The column number of the position.
+        _name (str): The name of the position e.g. 'a4'.
+        _is_legal (bool): Indicator of whether the position is legal or not i.e. on the board.
+    """
+
+    __row_names = "12345678"
+    __col_names = "hgfedcba"
+
+    def __init__(self, row: int, col: int) -> None:
+        """
+        Constructor method for the Position class.
+
+        Parameters:
+             row (int): Row number of the position.
+             col (int): Column number of the position.
+        """
+        self._row = row
+        self._col = col
+        self._name = self._set_name()
+        self._is_legal = self._check_legality()
+
+    @property
+    def row(self) -> int:
+        """Get row."""
+        return self._row
+
+    @property
+    def col(self) -> int:
+        """Get col."""
+        return self._col
+
+    @property
+    def name(self) -> str:
+        """Get name."""
+        return self._name
+
+    @property
+    def is_legal(self) -> bool:
+        """Get is_legal."""
+        return self._is_legal
+
+    def __repr__(self) -> str:
+        """Repr method for the Position class."""
+        return repr(self.name)
+
+    def __eq__(self, other: object) -> bool:
+        """__eq__ method for the Position class."""
+        if not isinstance(other, Position):
+            return NotImplemented(f"Cannot compare type Position with type {type(other)}.")
+        if self.row == other.row and self.col == other.col:
+            return True
+        else:
+            return False
+
+    def _set_name(self) -> str:
+        """Set the name of the position."""
+        try:
+            return self.__col_names[self.col] + self.__row_names[self.row]
+        except IndexError:
+            return ""
+
+    def _check_legality(self) -> bool:
+        """
+        Check whether a position is legal.
+
+        If a position lies off the board, it is illegal.
+        """
+        if self.row < 0 or self.row >= 8:
+            return False
+        elif self.col < 0 or self.col >= 8:
+            return False
+        else:
+            return True
 
 
 class Piece:
@@ -58,7 +133,7 @@ class Piece:
         "p": "♟"
     }
 
-    def __init__(self, name, row, col):
+    def __init__(self, name: str, row: int, col: int) -> None:
         """
         Constructor method for the Piece class.
 
@@ -77,31 +152,31 @@ class Piece:
         self._has_moved = False
         self.position_history = [(0, self.position)]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Repr method for the Piece class."""
         return repr(self.name)
 
     @property
-    def name(self):
-        """Get function for the 'name' property."""
+    def name(self) -> str:
+        """Get name."""
         return self._name
 
     @property
-    def is_white(self):
-        """Get function for the 'is_white' property."""
+    def is_white(self) -> bool:
+        """Get is_white."""
         return self._is_white
 
     @property
-    def rank(self):
-        """Get function for the 'rank' property."""
+    def rank(self) -> str:
+        """Get rank."""
         return self._rank
 
     @property
-    def unicode(self):
-        """Get function for the 'unicode' property."""
+    def unicode(self) -> str:
+        """Get unicode."""
         return self._unicode
 
-    def _set_move_metric(self):
+    def _set_move_metric(self) -> List[Tuple[int, int]]:
         """
         Set the list of move metrics for the piece.
 
@@ -116,21 +191,21 @@ class Piece:
         else:
             return Piece.__move_metrics[self.rank]
 
-    def update_position(self, row, col, move_number):
+    def update_position(self, row: int, col: int, ply_number: int) -> None:
         """
         Update the position of a piece with a new position.
 
         Parameters:
             row (int): Row number of the new position.
             col (int): Column number of the new position.
-            move_number (int): The current move number in the game.
+            ply_number (int): The number of ply played in the game so far.
         """
         self.position = Position(row=row, col=col)
-        self.position_history.append((move_number, self.position))
+        self.position_history.append((ply_number, self.position))
         self._has_moved = True
         return
 
-    def _get_situational_directions(self, board, move_number):
+    def _get_situational_directions(self, board: np.ndarray, ply_number: int) -> List[Tuple[int, int]]:
         """
         Get a list of situational directions.
 
@@ -141,7 +216,7 @@ class Piece:
 
         Parameters:
             board (np.ndarray): The game board.
-            move_number (int): The current move number.
+            ply_number (int): The current ply number.
 
         Returns:
             situational_directions (list): A list of directions the piece can move in.
@@ -198,26 +273,26 @@ class Piece:
                     position_inhabitant.is_white != self.is_white  # opponent colour
                     and position_inhabitant.rank == "P"  # is a pawn
                     and len(position_inhabitant.position_history) == 2  # has only moved once
-                    and position_inhabitant.position_history[-1][0] == move_number  # has just moved
+                    and position_inhabitant.position_history[-1][0] == ply_number  # has just moved
             )
             if can_capture:
                 if direction not in situational_directions:
                     situational_directions.append(direction)
         return situational_directions
 
-    def get_possible_positions(self, board, move_number):
+    def get_possible_positions(self, board: np.ndarray, ply_number: int) -> List[Position]:
         """
         Determine all possible legal positions which the piece can move to.
 
         Parameters:
             board (np.ndarray): The game board.
-            move_number (int): The current move number.
+            ply_number (int): The current move number.
 
         Returns:
             possible_positions (list): A list of possible positions the piece can move to.
         """
         max_move = 1 if self.rank in ["P", "N", "K"] else 7
-        situational_directions = self._get_situational_directions(board=board, move_number=move_number)
+        situational_directions = self._get_situational_directions(board=board, ply_number=ply_number)
         possible_positions = []
         for direction in self.move_metric + situational_directions:
             for i in range(1, max_move + 1):
@@ -245,85 +320,6 @@ class Piece:
         return possible_positions
 
 
-class Position:
-    """
-    A class for piece positions.
-
-    Attributes:
-        _row (int): The row number of the position.
-        _col (int): The column number of the position.
-        _name (str): The name of the position e.g. 'a4'.
-        _is_legal (bool): Indicator of whether the position is legal or not i.e. on the board.
-    """
-
-    __row_names = "12345678"
-    __col_names = "hgfedcba"
-
-    def __init__(self, row, col):
-        """
-        Constructor method for the Position class.
-
-        Parameters:
-             row (int): Row number of the position.
-             col (int): Column number of the position.
-        """
-        self._row = row
-        self._col = col
-        self._name = self._set_name()
-        self._is_legal = self._check_legality()
-
-    @property
-    def row(self):
-        """Get method for the 'row' property."""
-        return self._row
-
-    @property
-    def col(self):
-        """Get method for the 'col' property."""
-        return self._col
-
-    @property
-    def name(self):
-        """Get method for the 'name' property."""
-        return self._name
-
-    @property
-    def is_legal(self):
-        """Get method for the 'is_legal' property."""
-        return self._is_legal
-
-    def __repr__(self):
-        """Repr method for the Position class."""
-        return repr(self.name)
-
-    def __eq__(self, other):
-        """__eq__ method for the Position class."""
-        if self.row == other.row and self.col == other.col:
-            return True
-        else:
-            return False
-
-    def _set_name(self):
-        """Set the name of the position."""
-        try:
-            return self.__col_names[self.col] + self.__row_names[self.row]
-        except IndexError:
-            return ""
-
-    def _check_legality(self):
-        """
-        Check whether a position is legal.
-
-        If a position lies off the board, it is illegal.
-        """
-        if self.row < 0 or self.row >= 8:
-            return False
-        elif self.col < 0 or self.col >= 8:
-            return False
-        else:
-            return True
-
-
 class Game:
     """
     A class for chess games.
@@ -341,12 +337,12 @@ class Game:
         _black_elo (str): The Elo rating of the player with the black pieces.
         _result (str): The final result of the game.
         _board (np.ndarray): The game board.
-        _move_count (int): A count of the number of moves played in the game.
+        _ply_count (int): A count of the number of moves played in the game.
     """
 
     __default_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
 
-    def __init__(self, tags):
+    def __init__(self, tags: Dict[str, str]) -> None:
         """
         Constructor method for the Game class.
 
@@ -366,15 +362,15 @@ class Game:
         self._result = self._get_tag_value(tag_key="Result")
         self._formatted_date = self._format_date()
         self._board = self._generate_board()
-        self._move_count = 0
+        self._ply_count = 0
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Repr method for the Game class."""
         print_grid = np.vstack(([["h", "g", "f", "e", "d", "c", "b", "a"]], self._board))
         print_grid = np.hstack((print_grid, [[" "], ["1"], ["2"], ["3"], ["4"], ["5"], ["6"], ["7"], ["8"]]))
         return str(np.flip(print_grid)).replace("None", " - ") + "\n"
 
-    def _get_tag_value(self, tag_key, default_value=""):
+    def _get_tag_value(self, tag_key: str, default_value: str = "") -> str:
         """
         Get the value corresponding to a given tag key.
 
@@ -387,7 +383,7 @@ class Game:
         except KeyError:
             return default_value
 
-    def _format_date(self):
+    def _format_date(self) -> str:
         """
         Format game date.
 
@@ -405,7 +401,7 @@ class Game:
             date = datetime.date(int(year), int(month), int(day)).strftime("%A %d %B %Y")
         return date
 
-    def _generate_board(self):
+    def _generate_board(self) -> np.ndarray:
         """
         Generate a board from a given FEN code.
 
@@ -428,7 +424,14 @@ class Game:
 
         return board
 
-    def _move_piece(self, piece, row, col, promoted_piece_rank=None, is_capture=False):
+    def _move_piece(
+            self,
+            piece: Piece,
+            row: int,
+            col: int,
+            promoted_piece_rank: str = None,
+            is_capture: bool = False
+    ) -> None:
         """
         Move a piece on the board.
 
@@ -447,9 +450,9 @@ class Game:
         else:
             en_passant = False
 
-        self._move_count += 1
+        self._ply_count += 1
         self._board[current_row, current_col] = None
-        piece.update_position(row=row, col=col, move_number=self._move_count)
+        piece.update_position(row=row, col=col, ply_number=self._ply_count)
         if promoted_piece_rank is not None:  # if pawn promotion, create a new piece at the new position
             new_piece_name = promoted_piece_rank.lower() if not piece.is_white else promoted_piece_rank
             new_piece = Piece(name=new_piece_name, row=row, col=col)
@@ -461,7 +464,7 @@ class Game:
             self._board[current_row, col] = None  # if en passant capture, remove the captured piece
         return
 
-    def _castle(self, white_to_move, castle_king_side):
+    def _castle(self, white_to_move: bool, castle_king_side: bool) -> None:
         """
         Execute castling of pieces on given side and for given colour.
 
@@ -491,12 +494,12 @@ class Game:
 
         return
 
-    def execute_move(self, move_string, white_to_move):
+    def execute_move(self, ply_string: str, white_to_move: bool) -> None:
         """
         Execute a given move.
 
         Parameters:
-            move_string (str): The move string to be executed e.g. 'Bxe4'.
+            ply_string (str): The move string to be executed e.g. 'Bxe4'.
             white_to_move (bool): Indicator of whether it's white's move or not.
 
         Raises:
@@ -515,75 +518,75 @@ class Game:
         new_row_str = None
         promoted_piece_rank = None
 
-        move_string = move_string.replace("+", "").replace("#", "")  # remove check indicators
+        ply_string = ply_string.replace("+", "").replace("#", "")  # remove check indicators
 
-        if re.match("^[a-h][1-8]$", string=move_string):  # pawn move
+        if re.match("^[a-h][1-8]$", string=ply_string):  # pawn move
             piece_rank = "P"
-            new_col_str = move_string[0]
-            new_row_str = move_string[1]
-        elif re.match("^[a-h]x[a-h][1-8]$", string=move_string):  # pawn capture
+            new_col_str = ply_string[0]
+            new_row_str = ply_string[1]
+        elif re.match("^[a-h]x[a-h][1-8]$", string=ply_string):  # pawn capture
             piece_rank = "P"
-            piece_col = move_string[0]
-            new_col_str = move_string[2]
-            new_row_str = move_string[3]
-        elif re.match("^[a-h][1-8]=[NBRQ]$", string=move_string):  # pawn promotion
+            piece_col = ply_string[0]
+            new_col_str = ply_string[2]
+            new_row_str = ply_string[3]
+        elif re.match("^[a-h][1-8]=[NBRQ]$", string=ply_string):  # pawn promotion
             piece_rank = "P"
-            new_col_str = move_string[0]
-            new_row_str = move_string[1]
-            promoted_piece_rank = move_string[3]
-        elif re.match("^[a-h]x[a-h][1-8]=[NBRQ]$", string=move_string):  # pawn promotion
+            new_col_str = ply_string[0]
+            new_row_str = ply_string[1]
+            promoted_piece_rank = ply_string[3]
+        elif re.match("^[a-h]x[a-h][1-8]=[NBRQ]$", string=ply_string):  # pawn promotion
             piece_rank = "P"
-            piece_col = move_string[0]
-            new_col_str = move_string[2]
-            new_row_str = move_string[3]
-            promoted_piece_rank = move_string[5]
-        elif re.match("^[NBRQK][a-h][1-8]$", string=move_string):  # piece move
-            piece_rank = move_string[0]
-            new_col_str = move_string[1]
-            new_row_str = move_string[2]
-        elif re.match("^[NBRQK][a-h][a-h][1-8]$", string=move_string):  # piece move, ambiguous column
-            piece_rank = move_string[0]
-            piece_col = move_string[1]
-            new_col_str = move_string[2]
-            new_row_str = move_string[3]
-        elif re.match("^[NBRQK][1-8][a-h][1-8]$", string=move_string):  # piece move, ambiguous row
-            piece_rank = move_string[0]
-            piece_row = move_string[1]
-            new_col_str = move_string[2]
-            new_row_str = move_string[3]
-        elif re.match("^[NBRQK][a-h][1-8][a-h][1-8]$", string=move_string):  # piece move, ambiguous row and column
-            piece_rank = move_string[0]
-            piece_col = move_string[1]
-            piece_row = move_string[2]
-            new_col_str = move_string[3]
-            new_row_str = move_string[4]
-        elif re.match("^[NBRQK]x[a-h][1-8]$", string=move_string):  # piece capture
-            piece_rank = move_string[0]
-            new_col_str = move_string[2]
-            new_row_str = move_string[3]
-        elif re.match("^[NBRQK][a-h]x[a-h][1-8]$", string=move_string):  # piece capture, ambiguous column:
-            piece_rank = move_string[0]
-            piece_col = move_string[1]
-            new_col_str = move_string[3]
-            new_row_str = move_string[4]
-        elif re.match("^[NBRQK][1-8]x[a-h][1-8]$", string=move_string):  # piece capture, ambiguous row:
-            piece_rank = move_string[0]
-            piece_row = move_string[1]
-            new_col_str = move_string[3]
-            new_row_str = move_string[4]
-        elif re.match("^[NBRQK][a-h][1-8]x[a-h][1-8]$", string=move_string):  # piece capture, ambiguous row and column:
-            piece_rank = move_string[0]
-            piece_col = move_string[1]
-            piece_row = move_string[2]
-            new_col_str = move_string[4]
-            new_row_str = move_string[5]
-        elif re.match("^O-O$|^0-0$|^O-O-O$|^0-0-0$", string=move_string):  # castle
-            if move_string == "O-O" or move_string == "0-0":
+            piece_col = ply_string[0]
+            new_col_str = ply_string[2]
+            new_row_str = ply_string[3]
+            promoted_piece_rank = ply_string[5]
+        elif re.match("^[NBRQK][a-h][1-8]$", string=ply_string):  # piece move
+            piece_rank = ply_string[0]
+            new_col_str = ply_string[1]
+            new_row_str = ply_string[2]
+        elif re.match("^[NBRQK][a-h][a-h][1-8]$", string=ply_string):  # piece move, ambiguous column
+            piece_rank = ply_string[0]
+            piece_col = ply_string[1]
+            new_col_str = ply_string[2]
+            new_row_str = ply_string[3]
+        elif re.match("^[NBRQK][1-8][a-h][1-8]$", string=ply_string):  # piece move, ambiguous row
+            piece_rank = ply_string[0]
+            piece_row = ply_string[1]
+            new_col_str = ply_string[2]
+            new_row_str = ply_string[3]
+        elif re.match("^[NBRQK][a-h][1-8][a-h][1-8]$", string=ply_string):  # piece move, ambiguous row and column
+            piece_rank = ply_string[0]
+            piece_col = ply_string[1]
+            piece_row = ply_string[2]
+            new_col_str = ply_string[3]
+            new_row_str = ply_string[4]
+        elif re.match("^[NBRQK]x[a-h][1-8]$", string=ply_string):  # piece capture
+            piece_rank = ply_string[0]
+            new_col_str = ply_string[2]
+            new_row_str = ply_string[3]
+        elif re.match("^[NBRQK][a-h]x[a-h][1-8]$", string=ply_string):  # piece capture, ambiguous column:
+            piece_rank = ply_string[0]
+            piece_col = ply_string[1]
+            new_col_str = ply_string[3]
+            new_row_str = ply_string[4]
+        elif re.match("^[NBRQK][1-8]x[a-h][1-8]$", string=ply_string):  # piece capture, ambiguous row:
+            piece_rank = ply_string[0]
+            piece_row = ply_string[1]
+            new_col_str = ply_string[3]
+            new_row_str = ply_string[4]
+        elif re.match("^[NBRQK][a-h][1-8]x[a-h][1-8]$", string=ply_string):  # piece capture, ambiguous row and column:
+            piece_rank = ply_string[0]
+            piece_col = ply_string[1]
+            piece_row = ply_string[2]
+            new_col_str = ply_string[4]
+            new_row_str = ply_string[5]
+        elif re.match("^O-O$|^0-0$|^O-O-O$|^0-0-0$", string=ply_string):  # castle
+            if ply_string == "O-O" or ply_string == "0-0":
                 castle_king_side = True
             else:
                 castle_queen_side = True
         else:
-            raise ValueError(f"Unrecognised move_string: {move_string}")
+            raise ValueError(f"Unrecognised move_string: {ply_string}")
 
         if castle_king_side or castle_queen_side:
             self._castle(white_to_move=white_to_move, castle_king_side=castle_king_side)
@@ -592,7 +595,7 @@ class Game:
         new_col = int(col_names.index(new_col_str))
         new_row = int(row_names.index(new_row_str))
         new_position = Position(row=new_row, col=new_col)
-        is_capture = True if "x" in move_string else False
+        is_capture = True if "x" in ply_string else False
 
         candidate_pieces = []
         for row in range(0, 8):
@@ -604,7 +607,7 @@ class Game:
                     continue
                 is_candidate_piece = (
                         piece.rank == piece_rank
-                        and new_position in piece.get_possible_positions(self._board, move_number=self._move_count)
+                        and new_position in piece.get_possible_positions(self._board, ply_number=self._ply_count)
                 )
                 if is_candidate_piece:
                     candidate_pieces.append(piece)
@@ -659,9 +662,9 @@ class Game:
                 )
                 return
 
-        raise ValueError(f"Invalid move: {move_string}")
+        raise ValueError(f"Invalid move: {ply_string}")
 
-    def draw_board(self, move_string=""):
+    def draw_board(self, ply_string: str = "") -> Image.Image:
         """
         Draw an image of the board in its current state.
 
@@ -723,7 +726,7 @@ class Game:
         move_text_font = ImageFont.truetype("arial.ttf", 20)
         draw.text(
             xy=(x_origin, y_origin - square_width * 0.667),
-            text=move_string,
+            text=ply_string,
             align="left",
             font=move_text_font,
             fill="black"
@@ -786,7 +789,7 @@ class ChessPlot:
 
     __end_states = ["1-0", "0-1", "1/2-1/2"]
 
-    def __init__(self, pgn):
+    def __init__(self, pgn: str) -> None:
         """
         Constructor for the ChessPlot class.
 
@@ -798,7 +801,7 @@ class ChessPlot:
         self._frames = self._draw_frames()
 
     @staticmethod
-    def _parse_file(file_path):
+    def _parse_file(file_path: str) -> Tuple[Dict[str, str], List[List[str]]]:
         """
         Parse a given file into a set of metadata tags and a move set.
 
@@ -807,11 +810,11 @@ class ChessPlot:
 
         Returns:
             tags (dict): A dictionary of metadata tags and their values.
-            moves (list): A list of pairs of moves played during the game.
+            moves (list): A list of pairs of ply played during the game.
         """
         file = open(file_path, "r")
         tags = {}
-        moves = ""
+        moves_string = ""
         for line in file:
             tag_search = re.search(r"\[(.*)]", line)
             if tag_search is not None:
@@ -820,21 +823,21 @@ class ChessPlot:
                 key, value = tag.split(" ", 1)
                 tags[key] = value
             else:  # extract move set
-                moves += line
+                moves_string += line
                 if line.endswith(tuple(ChessPlot.__end_states)):
                     break
-        if not moves:
+        if not moves_string:
             raise ValueError(f"File {file_path} contains no move set")
 
-        moves = moves.replace("\n", " ")
+        moves_string = moves_string.replace("\n", " ")
         moves = [
             [ply for ply in move.strip().split(" ") if ply != ""]
-            for move in re.split("\\d+\\.", moves) if move != ''
+            for move in re.split("\\d+\\.", moves_string) if move != ''
         ]
 
         return tags, moves
 
-    def _draw_frames(self):
+    def _draw_frames(self) -> List[Image.Image]:
         """
         Draw a list of frames, one for each ply played in the game.
 
@@ -855,12 +858,12 @@ class ChessPlot:
                 else:
                     move_string = f"{ply_count}... {ply}"
 
-                game.execute_move(move_string=ply, white_to_move=white_to_move)
-                frames.append(game.draw_board(move_string=move_string))
+                game.execute_move(ply_string=ply, white_to_move=white_to_move)
+                frames.append(game.draw_board(ply_string=move_string))
                 white_to_move = not white_to_move
         return frames
 
-    def to_gif(self, save_path=None, duration=2000):
+    def to_gif(self, save_path: str = None, duration: int = 2000) -> None:
         """
         Save the ChessPlot to a gif at a given location.
 
@@ -882,7 +885,7 @@ class ChessPlot:
             loop=0  # infinite loop
         )
 
-    def to_pdf(self, save_path=None):
+    def to_pdf(self, save_path: str = None) -> None:
         """
         Save the ChessPlot to a pdf at a given location.
 
@@ -902,7 +905,7 @@ class ChessPlot:
             resolution=1800
         )
 
-    def show(self):
+    def show(self) -> None:
         """Show all frames of a game."""
         for frame in self._frames:
             frame.show()
