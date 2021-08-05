@@ -659,7 +659,13 @@ class ChessPlot:
             board_only (bool): Indicator of whether only the board should be drawn or not (default False).
             black_perspective (bool): Indicator of whether to draw the game from the perspective of the
                 black pieces or not (default False).
+
+        Raises:
+            ValueError: If given plot size is too small or too large.
         """
+        if not 400 <= plot_size <= 1000:
+            raise ValueError("Please choose a plot size between 400 and 1000.")
+
         self._pgn = pgn
         self._tags, self._moves = self._parse_file(file_path=pgn)
         self._fen = self._get_tag_value(tag_key="FEN") if self._get_tag_value(tag_key="FEN") != "" else None
