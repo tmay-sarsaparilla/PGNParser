@@ -637,6 +637,7 @@ class ChessPlot:
         _black_perspective (bool): Indicator of whether the game should be shown from the perspective
             of the black pieces or not.
         _plot_size (int): The size of the plot to be produced.
+        _display_notation (bool): Indicator of whether to display move notation on plots.
         _header_image (Image.Image): A header image for each frame of a plot.
         _frames (list): A list of images, one for each of the moves played during the game.
     """
@@ -648,7 +649,8 @@ class ChessPlot:
             pgn: str,
             plot_size: int = 600,
             board_only: bool = False,
-            black_perspective: bool = False
+            black_perspective: bool = False,
+            display_notation: bool = True
     ) -> None:
         """
         Constructor for the ChessPlot class.
@@ -659,6 +661,7 @@ class ChessPlot:
             board_only (bool): Indicator of whether only the board should be drawn or not (default False).
             black_perspective (bool): Indicator of whether to draw the game from the perspective of the
                 black pieces or not (default False).
+            display_notation (bool): Indicator of whether to display move notation on plots (default True).
 
         Raises:
             ValueError: If given plot size is too small or too large.
@@ -684,6 +687,7 @@ class ChessPlot:
         self._board_only = board_only
         self._black_perspective = black_perspective
         self._plot_size = plot_size
+        self._display_notation = display_notation
         self._header_image = None
         self._frames = self._draw_frames()
 
@@ -728,6 +732,7 @@ class ChessPlot:
             [ply for ply in move.strip().split(" ") if ply != ""]
             for move in re.split("\\d+\\.", moves_string) if move != ''
         ]
+        moves = [move for move in moves if move]  # remove empty moves
 
         return tags, moves
 
@@ -827,19 +832,20 @@ class ChessPlot:
         x_origin, y_origin = square_width, square_width
 
         # move text
-        move_text_font = self._scale_font(
-            text="1. e4",
-            font_name="arial.ttf",
-            max_width=int(square_width * 0.8),
-            max_height=int(square_width * 0.8)
-        )
-        draw.text(
-            xy=(x_origin, y_origin * 0.5),
-            text=ply_string,
-            align="left",
-            font=move_text_font,
-            fill="black"
-        )
+        if self._display_notation:
+            move_text_font = self._scale_font(
+                text="1. e4",
+                font_name="arial.ttf",
+                max_width=int(square_width * 0.8),
+                max_height=int(square_width * 0.8)
+            )
+            draw.text(
+                xy=(x_origin, y_origin * 0.5),
+                text=ply_string,
+                align="left",
+                font=move_text_font,
+                fill="black"
+            )
 
         if not self._black_perspective:
             board = np.flip(board)
@@ -1024,19 +1030,18 @@ class ChessPlot:
                 header_height=header_height,
             )
         frames = [self._draw(board=game.board)]  # add starting position image
-        ply_count = 0
+        move_count = 0
         for pair in self._moves:
-            ply_count += 1
+            move_count += 1
             for ply in pair:
                 if ply in ChessPlot.__end_states:
                     break
                 if white_to_move:
-                    move_string = f"{ply_count}. {ply}"
+                    ply_string = f"{move_count}. {ply}"
                 else:
-                    move_string = f"{ply_count}... {ply}"
-
+                    ply_string = f"{move_count}... {ply}"
                 game.execute_move(ply_string=ply, white_to_move=white_to_move)
-                frames.append(self._draw(board=game.board, ply_string=move_string))
+                frames.append(self._draw(board=game.board, ply_string=ply_string))
                 white_to_move = not white_to_move
         return frames
 
