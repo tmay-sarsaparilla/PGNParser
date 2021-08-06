@@ -634,8 +634,7 @@ class ChessPlot:
         _black_square_colour (str): A hex code for the colour of black squares in the plot.
         _white_square_colour (str): A hex code for the colour of white squares in the plot.
         _board_only (bool): Indicator of whether only the board should be plotted or not.
-        _black_perspective (bool): Indicator of whether the game should be shown from the perspective
-            of the black pieces or not.
+        _flip_perspective (bool): Indicator of whether the view perspective of the game should be flipped
         _plot_size (int): The size of the plot to be produced.
         _square_width (int): The width of squares on the board in the final plot.
         _display_notation (bool): Indicator of whether to display move notation on plots.
@@ -653,7 +652,7 @@ class ChessPlot:
             pgn: str,
             plot_size: int = 600,
             board_only: bool = False,
-            black_perspective: bool = False,
+            flip_perspective: bool = False,
             display_notation: bool = True
     ) -> None:
         """
@@ -663,8 +662,8 @@ class ChessPlot:
             pgn (str): A path to a .pgn file to be plotted.
             plot_size (int): Size of the plot to be created.
             board_only (bool): Indicator of whether only the board should be drawn or not (default False).
-            black_perspective (bool): Indicator of whether to draw the game from the perspective of the
-                black pieces or not (default False).
+            flip_perspective (bool): Indicator of whether to the view perspective of the game should be flipped.
+                (default False)
             display_notation (bool): Indicator of whether to display move notation on plots (default True).
 
         Raises:
@@ -689,7 +688,7 @@ class ChessPlot:
         self._black_square_colour = "#276996"
         self._white_square_colour = "#e2e7ee"
         self._board_only = board_only
-        self._black_perspective = black_perspective
+        self._flip_perspective = flip_perspective
         self._plot_size = plot_size
         self._square_width = int(plot_size / 10)
         self._display_notation = display_notation
@@ -835,7 +834,7 @@ class ChessPlot:
                 fill="black"
             )
 
-        if not self._black_perspective:
+        if not self._flip_perspective:
             board = np.flip(board)
 
         for row in range(0, 8):
@@ -870,7 +869,7 @@ class ChessPlot:
                         fill="black",
                     )
                 if col == 0:
-                    if self._black_perspective:
+                    if self._flip_perspective:
                         row_text = "12345678"[row]
                     else:
                         row_text = "12345678"[7 - row]
@@ -887,7 +886,7 @@ class ChessPlot:
                         stroke_width=0
                     )
                 if row == 7:
-                    if self._black_perspective:
+                    if self._flip_perspective:
                         col_text = "abcdefgh"[7 - col]
                     else:
                         col_text = "abcdefgh"[col]
