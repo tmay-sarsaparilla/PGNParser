@@ -637,8 +637,12 @@ class ChessPlot:
         _black_perspective (bool): Indicator of whether the game should be shown from the perspective
             of the black pieces or not.
         _plot_size (int): The size of the plot to be produced.
+        _square_width (int): The width of squares on the board in the final plot.
         _display_notation (bool): Indicator of whether to display move notation on plots.
         _header_image (Image.Image): A header image for each frame of a plot.
+        _move_text_font (ImageFont.truetype): A font for drawing move notations on plots.
+        _unicode_font (ImageFont.truetype): A font for drawing pieces on the board.
+        _square_name_font (ImageFont.truetype): A font for drawing the square coordinates on plots.
         _frames (list): A list of images, one for each of the moves played during the game.
     """
 
@@ -687,8 +691,12 @@ class ChessPlot:
         self._board_only = board_only
         self._black_perspective = black_perspective
         self._plot_size = plot_size
+        self._square_width = int(plot_size / 10)
         self._display_notation = display_notation
         self._header_image = None
+        self._move_text_font = None
+        self._unicode_font = None
+        self._square_name_font = None
         self._frames = self._draw_frames()
 
     @staticmethod
@@ -797,53 +805,33 @@ class ChessPlot:
     def _draw_board(
             self,
             board: np.ndarray,
-            square_width: int,
             ply_string: str = "",
     ) -> Image.Image:
         """
         Draw an image of a given game board.
 
-        The image will be a 10x10 grid of square_width. If black_perspective is True, the board is flipped in the image.
+        The image will be a 10x10 grid. If black_perspective is True, the board is flipped in the image.
 
         Parameters:
             board (np.ndarray): The game board to be drawn.
-            square_width (int): The width of the squares on the board.
             ply_string (str): A string describing the ply being drawn e.g. 1. e4.
 
         Returns:
             image (Image.Image): An image of the board.
         """
 
-        image = Image.new(mode="RGB", size=(square_width * 10, square_width * 10), color="white")
+        image = Image.new(mode="RGB", size=(self._square_width * 10, self._square_width * 10), color="white")
         draw = ImageDraw.ImageDraw(im=image)
-        square_name_font = self._scale_font(
-            text="a",
-            font_name="arial.ttf",
-            max_width=int(square_width * 0.4),
-            max_height=int(square_width * 0.4)
-        )
-        unicode_font = self._scale_font(
-            text="♔",
-            font_name="seguisym.ttf",
-            max_width=square_width,
-            max_height=square_width
-        )
 
-        x_origin, y_origin = square_width, square_width
+        x_origin, y_origin = self._square_width, self._square_width
 
         # move text
         if self._display_notation:
-            move_text_font = self._scale_font(
-                text="1. e4",
-                font_name="arial.ttf",
-                max_width=int(square_width * 0.8),
-                max_height=int(square_width * 0.8)
-            )
             draw.text(
                 xy=(x_origin, y_origin * 0.5),
                 text=ply_string,
                 align="left",
-                font=move_text_font,
+                font=self._move_text_font,
                 fill="black"
             )
 
@@ -853,20 +841,20 @@ class ChessPlot:
         for row in range(0, 8):
             for col in range(0, 8):
                 piece = board[row, col]
-                x = x_origin + square_width * col
-                y = y_origin + square_width * row
+                x = x_origin + self._square_width * col
+                y = y_origin + self._square_width * row
                 square_colour = self._white_square_colour if (row + col) % 2 == 0 else self._black_square_colour
-                draw.rectangle(xy=((x, y), (x + square_width, y + square_width)), fill=square_colour)
+                draw.rectangle(xy=((x, y), (x + self._square_width, y + self._square_width)), fill=square_colour)
                 if piece is not None:
                     draw.text(
                         xy=(
-                            x_origin + square_width * col + square_width * 0.5,
-                            y_origin + square_width * row + square_width * 0.5
+                            x_origin + self._square_width * col + self._square_width * 0.5,
+                            y_origin + self._square_width * row + self._square_width * 0.5
                         ),
                         text=piece.unicode,
                         anchor="mm",
                         align="center",
-                        font=unicode_font,
+                        font=self._unicode_font,
                         fill="black"
                     )
                 if col == 0:
@@ -875,11 +863,14 @@ class ChessPlot:
                     else:
                         row_text = "12345678"[7 - row]
                     draw.text(
-                        xy=(x_origin - square_width * 0.5, y_origin + square_width * row + square_width * 0.5),
+                        xy=(
+                            x_origin - self._square_width * 0.5,
+                            y_origin + self._square_width * row + self._square_width * 0.5
+                        ),
                         text=row_text,
                         anchor="mm",
                         align="right",
-                        font=square_name_font,
+                        font=self._square_name_font,
                         fill="black",
                         stroke_width=0
                     )
@@ -890,13 +881,13 @@ class ChessPlot:
                         col_text = "abcdefgh"[col]
                     draw.text(
                         xy=(
-                            x_origin + square_width * col + square_width * 0.5,
-                            y_origin + square_width * 8 + square_width * 0.5
+                            x_origin + self._square_width * col + self._square_width * 0.5,
+                            y_origin + self._square_width * 8 + self._square_width * 0.5
                         ),
                         text=col_text,
                         anchor="mm",
                         align="center",
-                        font=square_name_font,
+                        font=self._square_name_font,
                         fill="black",
                         stroke_width=0
                     )
@@ -995,11 +986,8 @@ class ChessPlot:
             frame (Image.Image): An image depicting the game board in its current state.
         """
 
-        square_width = int(self._plot_size / 10)
-
         board_image = self._draw_board(
             board=board,
-            square_width=square_width,
             ply_string=ply_string,
         )
 
@@ -1028,6 +1016,27 @@ class ChessPlot:
             self._header_image = self._draw_header(
                 header_width=self._plot_size,
                 header_height=header_height,
+            )
+
+        # Create fonts
+        self._square_name_font = self._scale_font(
+            text="a",
+            font_name="arial.ttf",
+            max_width=int(self._square_width * 0.4),
+            max_height=int(self._square_width * 0.4)
+        )
+        self._unicode_font = self._scale_font(
+            text="♔",
+            font_name="seguisym.ttf",
+            max_width=self._square_width,
+            max_height=self._square_width
+        )
+        if self._display_notation:
+            self._move_text_font = self._scale_font(
+                text="1. e4",
+                font_name="arial.ttf",
+                max_width=int(self._square_width * 0.8),
+                max_height=int(self._square_width * 0.8)
             )
         frames = [self._draw(board=game.board)]  # add starting position image
         move_count = 0
