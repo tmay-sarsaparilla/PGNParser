@@ -325,21 +325,19 @@ class Game:
     A class for chess games.
 
     Attributes:
-        _fen (str): A FEN string for the starting position of the game.
+        _piece_positions (str): A string denoting the starting position of the game.
         board (np.ndarray): The game board.
         _ply_count (int): A count of the number of moves played in the game.
     """
 
-    __default_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
-
-    def __init__(self, fen: str) -> None:
+    def __init__(self, piece_positions: str) -> None:
         """
         Constructor method for the Game class.
 
         Parameters:
             fen (str): A FEN string describing the initial state of the board.
         """
-        self._fen = fen if fen is not None else Game.__default_fen
+        self._piece_positions = piece_positions
         self.board = self._generate_board()
         self._ply_count = 0
 
@@ -360,7 +358,7 @@ class Game:
 
         row = 7
         col = 7
-        for char in self._fen:
+        for char in self._piece_positions:
             if char == "/":
                 row -= 1
                 col = 7
@@ -620,7 +618,10 @@ class ChessPlot:
         _pgn (str): A path to a .pgn file to be plotted.
         _tags (dict): A set of metadata tags from the input .pgn file.
         _moves (list): A set of pairs of moves played during the game from the input .pgn file.
-        _fen (str): A FEN string of the starting position of the game.
+        _fen (str): A FEN string containing information on the starting position of the game.
+        _piece_positions (str): A string denoting the starting position of the pieces.
+        _white_to_move (bool): Indicator of whether it is white's move.
+        _move_count (int): The current full move count of the game.
         _event (str): The event at which the game took place.
         _site (str): The location where the game took place.
         _date (str): The date on which the game took place. Unknown fields are populated with '??'.
@@ -645,6 +646,7 @@ class ChessPlot:
         _frames (list): A list of images, one for each of the moves played during the game.
     """
 
+    __default_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
     __end_states = ["1-0", "0-1", "1/2-1/2"]
 
     def __init__(
@@ -674,7 +676,12 @@ class ChessPlot:
 
         self._pgn = pgn
         self._tags, self._moves = self._parse_file(file_path=pgn)
-        self._fen = self._get_tag_value(tag_key="FEN") if self._get_tag_value(tag_key="FEN") != "" else None
+        self._fen = self._get_tag_value(tag_key="FEN", default_value=ChessPlot.__default_fen)
+        (
+            self._piece_positions,
+            self._white_to_move,
+            self._move_count
+        ) = self._parse_fen()
         self._event = self._get_tag_value(tag_key="Event")
         self._site = self._get_tag_value(tag_key="Site")
         self._date = self._get_tag_value(tag_key="Date")
@@ -755,6 +762,42 @@ class ChessPlot:
             return self._tags[tag_key]
         except KeyError:
             return default_value
+
+    def _parse_fen(self):
+        """
+        Parse a given FEN string and return it's constituent elements.
+
+        A FEN string consists of six parts:
+        - Piece positions from white's perspective.
+        - Active colour ("w" or "b").
+        - Castling availability.
+        - En passant target.
+        - Half-move count.
+        - Full move count.
+
+        For full information, see: https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation.
+
+        Returns:
+            piece_positions (str): A string denoting the position of all pieces on the board.
+            white_to_move (bool): Indicator of whether it is white's move or not.
+            move_number (int): The current move number of the game.
+
+        Raises:
+            ValueError: If the given FEN string is invalid.
+        """
+
+        try:
+            fen_elements = self._fen.split(" ")
+            piece_positions = fen_elements[0]
+            active_colour = fen_elements[1]
+            move_number = fen_elements[5]
+            if active_colour == "w":
+                white_to_move = True
+            else:
+                white_to_move = False
+            return piece_positions, white_to_move, int(move_number)
+        except ValueError:
+            raise ValueError(f"{self._fen} is not a valid FEN string.")
 
     def _format_date(self) -> str:
         """
@@ -1020,8 +1063,8 @@ class ChessPlot:
         Returns:
             frames (list): A list of frames, one for each ply in the game.
         """
-        white_to_move = True
-        game = Game(fen=self._fen)
+
+        game = Game(piece_positions=self._piece_positions)
         if not self._board_only:
             header_height = int(self._plot_size * 0.15)
             self._header_image = self._draw_header(
@@ -1050,19 +1093,18 @@ class ChessPlot:
                 max_height=int(self._square_width * 0.8)
             )
         frames = [self._draw(board=game.board)]  # add starting position image
-        move_count = 0
         for pair in self._moves:
-            move_count += 1
             for ply in pair:
                 if ply in ChessPlot.__end_states:
                     break
-                if white_to_move:
-                    ply_string = f"{move_count}. {ply}"
+                if self._white_to_move:
+                    ply_string = f"{self._move_count}. {ply}"
                 else:
-                    ply_string = f"{move_count}... {ply}"
-                game.execute_move(ply_string=ply, white_to_move=white_to_move)
+                    ply_string = f"{self._move_count}... {ply}"
+                game.execute_move(ply_string=ply, white_to_move=self._white_to_move)
                 frames.append(self._draw(board=game.board, ply_string=ply_string))
-                white_to_move = not white_to_move
+                self._white_to_move = not self._white_to_move
+            self._move_count += 1
         return frames
 
     def to_gif(self, save_path: str = None, duration: int = 2000) -> None:
