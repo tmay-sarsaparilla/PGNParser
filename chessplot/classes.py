@@ -6,6 +6,7 @@ import numpy as np
 import re
 import datetime
 from typing import List, Tuple, Dict
+import copy
 from PIL import Image, ImageDraw, ImageFont
 
 
@@ -326,7 +327,7 @@ class Game:
 
     Attributes:
         _piece_positions (str): A string denoting the starting position of the game.
-        board (np.ndarray): The game board.
+        _board (np.ndarray): The game board.
         _ply_count (int): A count of the number of moves played in the game.
     """
 
@@ -335,15 +336,15 @@ class Game:
         Constructor method for the Game class.
 
         Parameters:
-            fen (str): A FEN string describing the initial state of the board.
+            piece_positions (str): A string describing the initial state of the board.
         """
         self._piece_positions = piece_positions
-        self.board = self._generate_board()
+        self._board = self._generate_board()
         self._ply_count = 0
 
     def __repr__(self) -> str:
         """Repr method for the Game class."""
-        print_grid = np.vstack(([["h", "g", "f", "e", "d", "c", "b", "a"]], self.board))
+        print_grid = np.vstack(([["h", "g", "f", "e", "d", "c", "b", "a"]], self._board))
         print_grid = np.hstack((print_grid, [[" "], ["1"], ["2"], ["3"], ["4"], ["5"], ["6"], ["7"], ["8"]]))
         return str(np.flip(print_grid)).replace("None", " - ") + "\n"
 
@@ -391,23 +392,23 @@ class Game:
         current_row = piece.position.row
         current_col = piece.position.col
 
-        if is_capture and self.board[row, col] is None:
+        if is_capture and self._board[row, col] is None:
             en_passant = True
         else:
             en_passant = False
 
         self._ply_count += 1
-        self.board[current_row, current_col] = None
+        self._board[current_row, current_col] = None
         piece.update_position(row=row, col=col, ply_number=self._ply_count)
         if promoted_piece_rank is not None:  # if pawn promotion, create a new piece at the new position
             new_piece_name = promoted_piece_rank.lower() if not piece.is_white else promoted_piece_rank
             new_piece = Piece(name=new_piece_name, row=row, col=col)
-            self.board[row, col] = new_piece
+            self._board[row, col] = new_piece
         else:  # otherwise move the existing piece
-            self.board[row, col] = piece
+            self._board[row, col] = piece
 
         if en_passant:
-            self.board[current_row, col] = None  # if en passant capture, remove the captured piece
+            self._board[current_row, col] = None  # if en passant capture, remove the captured piece
         return
 
     def _castle(self, white_to_move: bool, castle_king_side: bool) -> None:
@@ -419,17 +420,17 @@ class Game:
             castle_king_side (bool): Indicator of whether to castle king-side or not.
         """
         if white_to_move:
-            king = self.board[0, 3]
+            king = self._board[0, 3]
             if castle_king_side:
-                rook = self.board[0, 0]
+                rook = self._board[0, 0]
             else:
-                rook = self.board[0, 7]
+                rook = self._board[0, 7]
         else:
-            king = self.board[7, 3]
+            king = self._board[7, 3]
             if castle_king_side:
-                rook = self.board[7, 0]
+                rook = self._board[7, 0]
             else:
-                rook = self.board[7, 7]
+                rook = self._board[7, 7]
 
         if castle_king_side:
             self._move_piece(piece=king, row=king.position.row, col=king.position.col - 2)
@@ -546,14 +547,14 @@ class Game:
         candidate_pieces = []
         for row in range(0, 8):
             for col in range(0, 8):
-                piece = self.board[row, col]
+                piece = self._board[row, col]
                 if piece is None:  # if square is empty, skip
                     continue
                 if piece.is_white != white_to_move:  # if piece is the wrong colour, skip
                     continue
                 is_candidate_piece = (
                         piece.rank == piece_rank
-                        and new_position in piece.get_possible_positions(self.board, ply_number=self._ply_count)
+                        and new_position in piece.get_possible_positions(self._board, ply_number=self._ply_count)
                 )
                 if is_candidate_piece:
                     candidate_pieces.append(piece)
@@ -610,6 +611,16 @@ class Game:
 
         raise ValueError(f"Invalid move: {ply_string}")
 
+    def get_board(self) -> np.ndarray:
+        """
+        Get a copy of the current game board.
+
+        Returns:
+            (np.ndarray): Current game board.
+        """
+
+        return copy.deepcopy(self._board)
+
 
 class ChessPlot:
     """A class for plots of chess games.
@@ -643,6 +654,7 @@ class ChessPlot:
         _move_text_font (ImageFont.truetype): A font for drawing move notations on plots.
         _unicode_font (ImageFont.truetype): A font for drawing pieces on the board.
         _square_name_font (ImageFont.truetype): A font for drawing the square coordinates on plots.
+        _boards (list): A list of boards, one for each of the moves played during the game.
         _frames (list): A list of images, one for each of the moves played during the game.
     """
 
@@ -703,7 +715,8 @@ class ChessPlot:
         self._move_text_font = None
         self._unicode_font = None
         self._square_name_font = None
-        self._frames = self._draw_frames()
+        self._boards = self._parse_moves()
+        self._frames = []
 
     @staticmethod
     def _parse_file(file_path: str) -> Tuple[Dict[str, str], List[List[str]]]:
@@ -816,6 +829,33 @@ class ChessPlot:
         else:
             date = datetime.date(int(year), int(month), int(day)).strftime("%A %d %B %Y")
         return date
+
+    def _parse_moves(self) -> List[Tuple[str, np.ndarray]]:
+        """
+        Parse and execute a set of moves.
+
+        Each ply is parsed by a Game object which executes the move and returns a game board to be plotted later.
+
+        Returns:
+            boards (list): A list of game boards
+        """
+
+        game = Game(piece_positions=self._piece_positions)
+        boards = [("", game.get_board())]  # add starting position image
+        for pair in self._moves:
+            for ply in pair:
+                if ply in ChessPlot.__end_states:
+                    break
+                if self._white_to_move:
+                    ply_string = f"{self._move_count}. {ply}"
+                else:
+                    ply_string = f"{self._move_count}... {ply}"
+                game.execute_move(ply_string=ply, white_to_move=self._white_to_move)
+                boards.append((ply_string, game.get_board()))
+                self._white_to_move = not self._white_to_move
+            self._move_count += 1
+
+        return boards
 
     @staticmethod
     def _scale_font(text: str, font_name: str, max_width: int, max_height: int) -> ImageFont.truetype:
@@ -1056,15 +1096,11 @@ class ChessPlot:
 
         return frame
 
-    def _draw_frames(self) -> List[Image.Image]:
+    def _draw_frames(self) -> None:
         """
         Draw a list of frames, one for each ply played in the game.
-
-        Returns:
-            frames (list): A list of frames, one for each ply in the game.
         """
 
-        game = Game(piece_positions=self._piece_positions)
         if not self._board_only:
             header_height = int(self._plot_size * 0.15)
             self._header_image = self._draw_header(
@@ -1092,20 +1128,11 @@ class ChessPlot:
                 max_width=int(self._square_width * 0.8),
                 max_height=int(self._square_width * 0.8)
             )
-        frames = [self._draw(board=game.board)]  # add starting position image
-        for pair in self._moves:
-            for ply in pair:
-                if ply in ChessPlot.__end_states:
-                    break
-                if self._white_to_move:
-                    ply_string = f"{self._move_count}. {ply}"
-                else:
-                    ply_string = f"{self._move_count}... {ply}"
-                game.execute_move(ply_string=ply, white_to_move=self._white_to_move)
-                frames.append(self._draw(board=game.board, ply_string=ply_string))
-                self._white_to_move = not self._white_to_move
-            self._move_count += 1
-        return frames
+
+        for ply_string, board in self._boards:
+            self._frames.append(self._draw(board=board, ply_string=ply_string))
+
+        return
 
     def to_gif(self, save_path: str = None, duration: int = 2000) -> None:
         """
@@ -1119,6 +1146,10 @@ class ChessPlot:
         """
         if save_path is None:
             save_path = self._pgn.replace(".pgn", ".gif")
+
+        if not self._frames:
+            self._draw_frames()
+
         save_images = self._frames + [self._frames[-1]]  # add last element twice before loop restarts
         save_images[0].save(
             fp=save_path,
@@ -1140,6 +1171,10 @@ class ChessPlot:
         """
         if save_path is None:
             save_path = self._pgn.replace(".pgn", ".pdf")
+
+        if not self._frames:
+            self._draw_frames()
+
         save_images = self._frames
         save_images[0].save(
             fp=save_path,
@@ -1151,5 +1186,9 @@ class ChessPlot:
 
     def show(self) -> None:
         """Show all frames of a game."""
+
+        if not self._frames:
+            self._draw_frames()
+
         for frame in self._frames:
             frame.show()
