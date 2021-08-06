@@ -846,6 +846,18 @@ class ChessPlot:
                 square_colour = self._white_square_colour if (row + col) % 2 == 0 else self._black_square_colour
                 draw.rectangle(xy=((x, y), (x + self._square_width, y + self._square_width)), fill=square_colour)
                 if piece is not None:
+                    draw.text(  # add outline to piece
+                        xy=(
+                            x_origin + self._square_width * col + self._square_width * 0.5,
+                            y_origin + self._square_width * row + self._square_width * 0.5
+                        ),
+                        text=piece.unicode,
+                        anchor="mm",
+                        align="center",
+                        font=self._unicode_font,
+                        fill="white",
+                        stroke_width=3,
+                    )
                     draw.text(
                         xy=(
                             x_origin + self._square_width * col + self._square_width * 0.5,
@@ -855,7 +867,7 @@ class ChessPlot:
                         anchor="mm",
                         align="center",
                         font=self._unicode_font,
-                        fill="black"
+                        fill="black",
                     )
                 if col == 0:
                     if self._black_perspective:
