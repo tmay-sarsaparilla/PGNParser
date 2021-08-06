@@ -763,7 +763,7 @@ class ChessPlot:
         except KeyError:
             return default_value
 
-    def _parse_fen(self):
+    def _parse_fen(self) -> Tuple[str, bool, int]:
         """
         Parse a given FEN string and return it's constituent elements.
 
@@ -812,7 +812,7 @@ class ChessPlot:
         elif month == "??":
             date = year
         elif day == "??":
-            date = datetime.date(int(year), int(month), 0).strftime("%A %d %B %Y")
+            date = datetime.date(int(year), int(month), 1).strftime("%B %Y")
         else:
             date = datetime.date(int(year), int(month), int(day)).strftime("%A %d %B %Y")
         return date
