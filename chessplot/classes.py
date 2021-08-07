@@ -661,30 +661,13 @@ class ChessPlot:
     __default_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
     __end_states = ["1-0", "0-1", "1/2-1/2"]
 
-    def __init__(
-            self,
-            pgn: str,
-            plot_size: int = 600,
-            board_only: bool = False,
-            flip_perspective: bool = False,
-            display_notation: bool = True
-    ) -> None:
+    def __init__(self, pgn: str) -> None:
         """
         Constructor for the ChessPlot class.
 
         Parameters:
             pgn (str): A path to a .pgn file to be plotted.
-            plot_size (int): Size of the plot to be created.
-            board_only (bool): Indicator of whether only the board should be drawn or not (default False).
-            flip_perspective (bool): Indicator of whether to the view perspective of the game should be flipped.
-                (default False)
-            display_notation (bool): Indicator of whether to display move notation on plots (default True).
-
-        Raises:
-            ValueError: If given plot size is too small or too large.
         """
-        if not 400 <= plot_size <= 1000:
-            raise ValueError("Please choose a plot size between 400 and 1000.")
 
         self._pgn = pgn
         self._tags, self._moves = self._parse_file(file_path=pgn)
@@ -706,11 +689,13 @@ class ChessPlot:
         self._formatted_date = self._format_date()
         self._black_square_colour = "#276996"
         self._white_square_colour = "#e2e7ee"
-        self._board_only = board_only
-        self._flip_perspective = flip_perspective
-        self._plot_size = plot_size
-        self._square_width = int(plot_size / 10)
-        self._display_notation = display_notation
+        self._board_only = None
+        self._flip_perspective = None
+        self._plot_size = None
+        self._square_width = None
+        self._display_notation = None
+        self._start_frame = None
+        self._end_frame = None
         self._header_image = None
         self._move_text_font = None
         self._unicode_font = None
@@ -1129,26 +1114,111 @@ class ChessPlot:
                 max_height=int(self._square_width * 0.8)
             )
 
-        for ply_string, board in self._boards:
+        self._frames = []
+        for ply_string, board in self._boards[self._start_frame:self._end_frame + 1]:
             self._frames.append(self._draw(board=board, ply_string=ply_string))
 
         return
 
-    def to_gif(self, save_path: str = None, duration: int = 2000) -> None:
+    def _update_plot_settings(
+            self,
+            plot_size: int,
+            board_only: bool,
+            display_notation: bool,
+            flip_perspective: bool,
+            start_frame: int,
+            end_frame: int
+    ) -> bool:
+        """
+        Update plot settings.
+
+        Only make updates if a change has occurred. If settings haven't changed, then we don't
+        need to recreate frames.
+
+        Parameters:
+            plot_size (int): The size of the plots to be created.
+            board_only (bool): Indicator of whether only the board should be drawn.
+            display_notation (bool): Indicator of whether to display notation.
+            flip_perspective (bool): Indicator of whether the board perspective should be flipped.
+            start_frame (int): The frame on which the plot should start.
+            end_frame (int): The frame on which the plot should end.
+
+        Returns:
+            settings_change (bool): Indicator of whether any settings have changed.
+
+        Raises:
+            ValueError: If given plot size is too small or too large
+        """
+
+        settings_change = False
+
+        end_frame = end_frame if end_frame is not None else len(self._boards) - 1
+
+        if plot_size != self._plot_size or self._plot_size is None:
+            if not 400 <= plot_size <= 1000:
+                raise ValueError("Please choose a plot size between 400 and 1000.")
+            self._plot_size = plot_size
+            self._square_width = int(plot_size / 10)
+            settings_change = True
+        if board_only != self._board_only or self._board_only is None:
+            self._board_only = board_only
+            settings_change = True
+        if display_notation != self._display_notation or self._display_notation is None:
+            self._display_notation = display_notation
+            settings_change = True
+        if flip_perspective != self._flip_perspective or self._flip_perspective is None:
+            self._flip_perspective = flip_perspective
+            settings_change = True
+        if start_frame != self._start_frame or self._start_frame is None:
+            self._start_frame = start_frame
+            settings_change = True
+        if end_frame != self._end_frame or self._end_frame is None:
+            self._end_frame = end_frame
+            settings_change = True
+
+        return settings_change
+
+    def to_gif(
+            self,
+            save_path: str = None,
+            duration: int = 2000,
+            plot_size: int = 800,
+            board_only: bool = False,
+            display_notation: bool = True,
+            flip_perspective: bool = False,
+            start_frame: int = 0,
+            end_frame: int = None
+    ) -> None:
         """
         Save the ChessPlot to a gif at a given location.
 
         If the given location is None, the location of the input .pgn file will be used with the .gif extension.
 
         Parameters:
-            save_path (str): A location where the produced .gif should be saved.
-            duration (int): The time in milliseconds each frame of the .gif should last.
+            save_path (str): A location where the produced .gif should be saved (default None).
+            duration (int): The time in milliseconds each frame of the .gif should last (default 2000).
+            plot_size (int): The width each frame of the gif should be (default 800).
+            board_only (bool): Indicator of whether only the board should be plotted (default False).
+            display_notation (bool): Indicator of whether to display move notation on the plot (default True).
+            flip_perspective (bool): Indicator of whether the board perspective should be flipped (default False).
+            start_frame (int): The frame on which the gif should begin (default 0).
+            end_frame (int) The frame on which the gif should end (default None).
         """
+
+        settings_change = self._update_plot_settings(
+            plot_size=plot_size,
+            board_only=board_only,
+            display_notation=display_notation,
+            flip_perspective=flip_perspective,
+            start_frame=start_frame,
+            end_frame=end_frame
+        )
+
+        if settings_change:
+            self._draw_frames()
+
         if save_path is None:
             save_path = self._pgn.replace(".pgn", ".gif")
-
-        if not self._frames:
-            self._draw_frames()
 
         save_images = self._frames + [self._frames[-1]]  # add last element twice before loop restarts
         save_images[0].save(
@@ -1159,8 +1229,18 @@ class ChessPlot:
             duration=duration,  # 1 second per loop
             loop=0  # infinite loop
         )
+        return
 
-    def to_pdf(self, save_path: str = None) -> None:
+    def to_pdf(
+            self,
+            save_path: str = None,
+            plot_size: int = 800,
+            board_only: bool = False,
+            display_notation: bool = True,
+            flip_perspective: bool = False,
+            start_frame: int = 0,
+            end_frame: int = None
+    ) -> None:
         """
         Save the ChessPlot to a pdf at a given location.
 
@@ -1168,12 +1248,28 @@ class ChessPlot:
 
         Parameters:
             save_path (str): A location where the produced .pdf should be saved.
+            plot_size (int): The width each frame of the gif should be (default 800).
+            board_only (bool): Indicator of whether only the board should be plotted (default False).
+            display_notation (bool): Indicator of whether to display move notation on the plot (default True).
+            flip_perspective (bool): Indicator of whether the board perspective should be flipped (default False).
+            start_frame (int): The frame on which the gif should begin (default 0).
+            end_frame (int) The frame on which the gif should end (default None).
         """
+
+        settings_change = self._update_plot_settings(
+            plot_size=plot_size,
+            board_only=board_only,
+            display_notation=display_notation,
+            flip_perspective=flip_perspective,
+            start_frame=start_frame,
+            end_frame=end_frame
+        )
+
+        if settings_change:
+            self._draw_frames()
+
         if save_path is None:
             save_path = self._pgn.replace(".pgn", ".pdf")
-
-        if not self._frames:
-            self._draw_frames()
 
         save_images = self._frames
         save_images[0].save(
@@ -1183,12 +1279,46 @@ class ChessPlot:
             append_images=save_images[1:],
             resolution=1800
         )
+        return
 
-    def show(self) -> None:
-        """Show all frames of a game."""
+    def to_png(
+            self,
+            frame: int,
+            save_path: str = None,
+            plot_size: int = 800,
+            board_only: bool = False,
+            display_notation: bool = True,
+            flip_perspective: bool = False,
+    ):
+        """
+        Save a ChessPlot frame to a .png file at a given location.
 
-        if not self._frames:
+        If the given location is None, the location of the input .pgn file will be used with the .png extension.
+
+        Parameters:
+            frame (int): The frame to be plotted.
+            save_path (str): A location where the produced .pdf should be saved.
+            plot_size (int): The width each frame of the gif should be (default 800).
+            board_only (bool): Indicator of whether only the board should be plotted (default False).
+            display_notation (bool): Indicator of whether to display move notation on the plot (default True).
+            flip_perspective (bool): Indicator of whether the board perspective should be flipped (default False).
+        """
+
+        settings_change = self._update_plot_settings(
+            plot_size=plot_size,
+            board_only=board_only,
+            display_notation=display_notation,
+            flip_perspective=flip_perspective,
+            start_frame=frame,
+            end_frame=frame
+        )
+
+        if settings_change:
             self._draw_frames()
 
-        for frame in self._frames:
-            frame.show()
+        if save_path is None:
+            save_path = self._pgn.replace(".pgn", ".png")
+
+        image = self._frames[0]
+        image.save(fp=save_path, format="png")
+        return
