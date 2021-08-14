@@ -6,4 +6,4 @@ Classes:
     ChessPlot
 """
 
-from .classes import ChessPlot
+from .chessplot import ChessPlot
