@@ -24,9 +24,9 @@ class _Position:
 
     def __init__(self, row: int, col: int) -> None:
         """
-        Constructor method for the Position class.
+        Constructor method for the _Position class.
 
-        Parameters:
+        Args:
              row (int): Row number of the position.
              col (int): Column number of the position.
         """
@@ -134,9 +134,9 @@ class _Piece:
 
     def __init__(self, name: str, row: int, col: int) -> None:
         """
-        Constructor method for the Piece class.
+        Constructor method for the _Piece class.
 
-        Parameters:
+        Args:
             name (str): Name of the piece e.g. 'P' is a white pawn.
             row (int): Row number of the piece's position.
             col (int): Column number of the piece's position.
@@ -194,7 +194,7 @@ class _Piece:
         """
         Update the position of a piece with a new position.
 
-        Parameters:
+        Args:
             row (int): Row number of the new position.
             col (int): Column number of the new position.
             ply_number (int): The number of ply played in the game so far.
@@ -209,11 +209,11 @@ class _Piece:
         Get a list of situational directions.
 
         These include:
-        - Pawn moving two squares on its first move
-        - Pawn capturing a piece
-        - Pawn capturing a piece en passant
+            - Pawn moving two squares on its first move
+            - Pawn capturing a piece
+            - Pawn capturing a piece en passant
 
-        Parameters:
+        Args:
             board (np.ndarray): The game board.
             ply_number (int): The current ply number.
 
@@ -283,7 +283,7 @@ class _Piece:
         """
         Determine all possible legal positions which the piece can move to.
 
-        Parameters:
+        Args:
             board (np.ndarray): The game board.
             ply_number (int): The current move number.
 
@@ -331,9 +331,9 @@ class _Interpreter:
 
     def __init__(self, piece_positions: str) -> None:
         """
-        Constructor method for the Game class.
+        Constructor method for the _Interpreter class.
 
-        Parameters:
+        Args:
             piece_positions (str): A string describing the initial state of the board.
         """
         self._piece_positions = piece_positions
@@ -380,7 +380,7 @@ class _Interpreter:
         """
         Move a piece on the board.
 
-        Parameters:
+        Args:
             piece (_Piece): The piece to be moved.
             row (int): The row number to move the piece to.
             col (int): The column number to move the piece to.
@@ -413,7 +413,7 @@ class _Interpreter:
         """
         Execute castling of pieces on given side and for given colour.
 
-        Parameters:
+        Args:
             white_to_move (bool): Indicator of whether it's white's move or not.
             castle_king_side (bool): Indicator of whether to castle king-side or not.
         """
@@ -443,7 +443,7 @@ class _Interpreter:
         """
         Execute a given move.
 
-        Parameters:
+        Args:
             ply_string (str): The move string to be executed e.g. 'Bxe4'.
             white_to_move (bool): Indicator of whether it's white's move or not.
 
@@ -625,7 +625,7 @@ class UnrecognisedPlyError(Exception):
     """
     Exception raised when a ply string is not recognised by the Interpreter.
 
-    Parameters:
+    Args:
         ply_string (str): The unrecognised ply string.
         message (str): The error message to raise.
     """
@@ -643,7 +643,7 @@ class InterpreterError(Exception):
     """
     Exception raised when the Interpreter cannot execute a given ply.
 
-    Parameters:
+    Args:
         ply_string (str): The ply which could not be executed.
         message (str): The error message to raise.
     """
