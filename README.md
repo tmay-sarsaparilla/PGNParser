@@ -5,8 +5,8 @@
 by parsing and plotting `.pgn` files (Portable Game Notation).
 
 
-It can produce either an animated `.gif` of a game or
-a `.pdf` with a single page per move.
+It can produce either an animated `.gif` of a game,
+a `.pdf` with a single page per move, or `.png` files of individual moves.
 
 ## Installation
 ### Using PyPi:

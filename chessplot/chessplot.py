@@ -3,9 +3,12 @@
 import numpy as np
 import re
 import datetime
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, TypeVar, Generic
 from PIL import Image, ImageFont, ImageDraw
 from .interpreter import _Interpreter
+
+
+T = TypeVar("T")
 
 
 class ChessPlot:
@@ -51,7 +54,7 @@ class ChessPlot:
         """
         Constructor for the ChessPlot class.
 
-        Parameters:
+        Args:
             pgn (str): A path to a .pgn file to be plotted.
         """
 
@@ -94,7 +97,7 @@ class ChessPlot:
         """
         Parse a given file into a set of metadata tags and a move set.
 
-        Parameters:
+        Args:
             file_path (str): A path to the .pgn file to be parsed.
 
         Returns:
@@ -138,7 +141,7 @@ class ChessPlot:
         """
         Get the value corresponding to a given tag key.
 
-        Parameters:
+        Args:
             tag_key (str): The key of the desired tag.
             default_value (str): The default value in the event that the tag is not present.
         """
@@ -152,12 +155,12 @@ class ChessPlot:
         Parse a given FEN string and return it's constituent elements.
 
         A FEN string consists of six parts:
-        - Piece positions from white's perspective.
-        - Active colour ("w" or "b").
-        - Castling availability.
-        - En passant target.
-        - Half-move count.
-        - Full move count.
+            - Piece positions from white's perspective.
+            - Active colour ("w" or "b").
+            - Castling availability.
+            - En passant target.
+            - Half-move count.
+            - Full move count.
 
         For full information, see: https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation.
 
@@ -234,7 +237,7 @@ class ChessPlot:
         """
         Scale a font to fit a given piece of text within a bounding box.
 
-        Parameters:
+        Args:
             text (str): The text to be fitted.
             font_name (str): The name of the font.
             max_width (int): The maximum width of the scaled text.
@@ -256,17 +259,13 @@ class ChessPlot:
 
         return font
 
-    def _draw_board(
-            self,
-            board: np.ndarray,
-            ply_string: str = "",
-    ) -> Image.Image:
+    def _draw_board(self, board: np.ndarray, ply_string: str = "") -> Image.Image:
         """
         Draw an image of a given game board.
 
         The image will be a 10x10 grid. If black_perspective is True, the board is flipped in the image.
 
-        Parameters:
+        Args:
             board (np.ndarray): The game board to be drawn.
             ply_string (str): A string describing the ply being drawn e.g. 1. e4.
 
@@ -364,13 +363,13 @@ class ChessPlot:
         Draw a header for all frames including game metadata.
 
         Metadata includes:
-        - Player names
-        - Player Elo ratings
-        - Game venue
-        - Game date
-        - Game result
+            - Player names
+            - Player Elo ratings
+            - Game venue
+            - Game date
+            - Game result
 
-        Parameters:
+        Args:
             header_width (int): The width of the header to be drawn.
             header_height (int): The height of the header to be drawn.
 
@@ -444,7 +443,7 @@ class ChessPlot:
         """
         Draw an image of the board in its current state.
 
-        Parameter:
+        Args:
             board (np.ndarray): The game board state following the ply being drawn.
             ply_string (str): A string describing the ply being drawn.
 
@@ -507,22 +506,17 @@ class ChessPlot:
 
         return
 
-    def _update_plot_settings(
-            self,
-            plot_size: int,
-            board_only: bool,
-            display_notation: bool,
-            flip_perspective: bool,
-            start_frame: int,
-            end_frame: int
-    ) -> bool:
+    def _update_plot_settings(self, **kwargs: Generic[T]) -> bool:
         """
         Update plot settings.
 
         Only make updates if a change has occurred. If settings haven't changed, then we don't
         need to recreate frames.
 
-        Parameters:
+        Args:
+            **kwargs (dict): A set of keyword arguments containing various plot settings.
+
+        Keyword Args:
             plot_size (int): The size of the plots to be created.
             board_only (bool): Indicator of whether only the board should be drawn.
             display_notation (bool): Indicator of whether to display notation.
@@ -538,6 +532,13 @@ class ChessPlot:
         """
 
         settings_change = False
+
+        plot_size = kwargs.pop("plot_size", 800)
+        board_only = kwargs.pop("board_only", False)
+        display_notation = kwargs.pop("display_notation", True)
+        flip_perspective = kwargs.pop("flip_perspective", False)
+        start_frame = kwargs.pop("start_frame", 0)
+        end_frame = kwargs.pop("end_frame", None)
 
         end_frame = end_frame if end_frame is not None else len(self._boards) - 1
 
@@ -565,25 +566,17 @@ class ChessPlot:
 
         return settings_change
 
-    def to_gif(
-            self,
-            save_path: str = None,
-            duration: int = 2000,
-            plot_size: int = 800,
-            board_only: bool = False,
-            display_notation: bool = True,
-            flip_perspective: bool = False,
-            start_frame: int = 0,
-            end_frame: int = None
-    ) -> None:
+    def to_gif(self, save_path: str = None, duration: int = 2000, **kwargs: Generic[T]) -> None:
         """
         Save the ChessPlot to a gif at a given location.
 
         If the given location is None, the location of the input .pgn file will be used with the .gif extension.
 
-        Parameters:
+        Args:
             save_path (str): A location where the produced .gif should be saved (default None).
             duration (int): The time in milliseconds each frame of the .gif should last (default 2000).
+
+        Keyword Args:
             plot_size (int): The width each frame of the gif should be (default 800).
             board_only (bool): Indicator of whether only the board should be plotted (default False).
             display_notation (bool): Indicator of whether to display move notation on the plot (default True).
@@ -592,14 +585,7 @@ class ChessPlot:
             end_frame (int) The frame on which the gif should end (default None).
         """
 
-        settings_change = self._update_plot_settings(
-            plot_size=plot_size,
-            board_only=board_only,
-            display_notation=display_notation,
-            flip_perspective=flip_perspective,
-            start_frame=start_frame,
-            end_frame=end_frame
-        )
+        settings_change = self._update_plot_settings(**kwargs)
 
         if settings_change:
             self._draw_frames()
@@ -618,23 +604,16 @@ class ChessPlot:
         )
         return
 
-    def to_pdf(
-            self,
-            save_path: str = None,
-            plot_size: int = 800,
-            board_only: bool = False,
-            display_notation: bool = True,
-            flip_perspective: bool = False,
-            start_frame: int = 0,
-            end_frame: int = None
-    ) -> None:
+    def to_pdf(self, save_path: str = None, **kwargs: Generic[T]) -> None:
         """
         Save the ChessPlot to a pdf at a given location.
 
         If the given location is None, the location of the input .pgn file will be used with the .pdf extension.
 
-        Parameters:
+        Args:
             save_path (str): A location where the produced .pdf should be saved.
+
+        Keyword Args:
             plot_size (int): The width each frame of the gif should be (default 800).
             board_only (bool): Indicator of whether only the board should be plotted (default False).
             display_notation (bool): Indicator of whether to display move notation on the plot (default True).
@@ -643,14 +622,7 @@ class ChessPlot:
             end_frame (int) The frame on which the gif should end (default None).
         """
 
-        settings_change = self._update_plot_settings(
-            plot_size=plot_size,
-            board_only=board_only,
-            display_notation=display_notation,
-            flip_perspective=flip_perspective,
-            start_frame=start_frame,
-            end_frame=end_frame
-        )
+        settings_change = self._update_plot_settings(**kwargs)
 
         if settings_change:
             self._draw_frames()
@@ -668,37 +640,26 @@ class ChessPlot:
         )
         return
 
-    def to_png(
-            self,
-            frame: int,
-            save_path: str = None,
-            plot_size: int = 800,
-            board_only: bool = False,
-            display_notation: bool = True,
-            flip_perspective: bool = False,
-    ):
+    def to_png(self, frame: int, save_path: str = None, **kwargs: Generic[T]):
         """
         Save a ChessPlot frame to a .png file at a given location.
 
         If the given location is None, the location of the input .pgn file will be used with the .png extension.
 
-        Parameters:
+        Args:
             frame (int): The frame to be plotted.
             save_path (str): A location where the produced .pdf should be saved.
+
+        Keyword Args:
             plot_size (int): The width each frame of the gif should be (default 800).
             board_only (bool): Indicator of whether only the board should be plotted (default False).
             display_notation (bool): Indicator of whether to display move notation on the plot (default True).
             flip_perspective (bool): Indicator of whether the board perspective should be flipped (default False).
         """
 
-        settings_change = self._update_plot_settings(
-            plot_size=plot_size,
-            board_only=board_only,
-            display_notation=display_notation,
-            flip_perspective=flip_perspective,
-            start_frame=frame,
-            end_frame=frame
-        )
+        kwargs["start_frame"] = frame
+        kwargs["end_frame"] = frame
+        settings_change = self._update_plot_settings(**kwargs)
 
         if settings_change:
             self._draw_frames()
