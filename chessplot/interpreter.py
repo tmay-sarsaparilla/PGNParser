@@ -6,6 +6,7 @@ import numpy as np
 import re
 import copy
 from .position import _Position
+from .piece import _Piece
 
 
 class _Interpreter:
