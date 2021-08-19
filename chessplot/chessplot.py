@@ -208,7 +208,7 @@ class ChessPlot:
         """
         Parse and execute a set of moves.
 
-        Each ply is parsed by an interpreter object which executes the move
+        Each ply_string is parsed by an interpreter object which executes the move
         and returns a game board to be plotted later.
 
         Returns:
@@ -217,16 +217,19 @@ class ChessPlot:
 
         interpreter = _Interpreter(piece_positions=self._piece_positions)
         boards = [("", interpreter.get_board())]  # add starting position image
+
         for pair in self._moves:
-            for ply in pair:
-                if ply in ChessPlot.__end_states:
+            for ply_string in pair:
+                if ply_string in ChessPlot.__end_states:
                     break
                 if self._white_to_move:
-                    ply_string = f"{self._move_count}. {ply}"
+                    display_string = f"{self._move_count}. {ply_string}"
                 else:
-                    ply_string = f"{self._move_count}... {ply}"
-                interpreter.execute_move(ply_string=ply, white_to_move=self._white_to_move)
-                boards.append((ply_string, interpreter.get_board()))
+                    display_string = f"{self._move_count}... {ply_string}"
+
+                ply = interpreter.parse_ply_string(ply_string=ply_string)
+                interpreter.execute_ply(ply=ply, white_to_move=self._white_to_move)
+                boards.append((display_string, interpreter.get_board()))
                 self._white_to_move = not self._white_to_move
             self._move_count += 1
 

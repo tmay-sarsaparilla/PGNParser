@@ -3,10 +3,10 @@ Module containing all classes used by the chessplot package.
 """
 
 import numpy as np
-import re
 import copy
-from .position import _Position
+import re
 from .piece import _Piece
+from .ply import _Ply, UnrecognisedPlyError
 
 
 class _Interpreter:
@@ -128,109 +128,52 @@ class _Interpreter:
 
         return
 
-    def execute_move(self, ply_string: str, white_to_move: bool) -> None:
+    @staticmethod
+    def parse_ply_string(ply_string: str) -> _Ply:
+
+        ply_elements = {"ply_string": ply_string}
+
+        if re.match("^O-O$|^0-0$", string=ply_string):  # castle king-side
+            ply_elements["castle_king_side"] = True
+            return _Ply(**ply_elements)
+
+        if re.match("^O-O-O$|^0-0-0$", string=ply_string):  # castle queen-side
+            ply_elements["castle_queen_side"] = True
+            return _Ply(**ply_elements)
+
+        match = re.match("^([NBRKQ]?)([a-h]?)([1-8]?)(x?)([a-h][1-8])=?([NBRQ]?)", ply_string)  # standard move
+
+        if not match:
+            raise UnrecognisedPlyError(ply_string=ply_string)
+
+        ply_elements["new_col"], ply_elements["new_row"] = list(match.group(5))
+        ply_elements["piece_rank"] = match.group(1) if match.group(1) else "P"
+        if match.group(2):  # set if optional column identifier is provided
+            ply_elements["piece_col"] = match.group(2)
+        if match.group(3):  # set if optional row identifier is provided
+            ply_elements["piece_row"] = match.group(3)
+        if match.group(4):  # set if ply contains a capture indicator
+            ply_elements["is_capture"] = True
+        if match.group(6):  # set if ply contains a piece promotion
+            ply_elements["promoted_piece_rank"] = match.group(6)
+
+        return _Ply(**ply_elements)
+
+    def execute_ply(self, ply: _Ply, white_to_move: bool) -> None:
         """
-        Execute a given move.
+        Execute a given ply.
 
         Args:
-            ply_string (str): The move string to be executed e.g. 'Bxe4'.
+            ply (_Ply): The ply to be executed.
             white_to_move (bool): Indicator of whether it's white's move or not.
 
         Raises:
-            UnrecognisedPlyError: If the given ply string could not be parsed.
             InterpreterError: If the given ply could not be executed.
         """
-        row_names = "12345678"
-        col_names = "hgfedcba"
 
-        # First parse the given move string
-        castle_king_side = False
-        castle_queen_side = False
-        piece_rank = None
-        piece_col = None
-        piece_row = None
-        new_col_str = None
-        new_row_str = None
-        promoted_piece_rank = None
-
-        ply_string = ply_string.replace("+", "").replace("#", "")  # remove check indicators
-
-        if re.match("^[a-h][1-8]$", string=ply_string):  # pawn move
-            piece_rank = "P"
-            new_col_str = ply_string[0]
-            new_row_str = ply_string[1]
-        elif re.match("^[a-h]x[a-h][1-8]$", string=ply_string):  # pawn capture
-            piece_rank = "P"
-            piece_col = ply_string[0]
-            new_col_str = ply_string[2]
-            new_row_str = ply_string[3]
-        elif re.match("^[a-h][1-8]=[NBRQ]$", string=ply_string):  # pawn promotion
-            piece_rank = "P"
-            new_col_str = ply_string[0]
-            new_row_str = ply_string[1]
-            promoted_piece_rank = ply_string[3]
-        elif re.match("^[a-h]x[a-h][1-8]=[NBRQ]$", string=ply_string):  # pawn promotion
-            piece_rank = "P"
-            piece_col = ply_string[0]
-            new_col_str = ply_string[2]
-            new_row_str = ply_string[3]
-            promoted_piece_rank = ply_string[5]
-        elif re.match("^[NBRQK][a-h][1-8]$", string=ply_string):  # piece move
-            piece_rank = ply_string[0]
-            new_col_str = ply_string[1]
-            new_row_str = ply_string[2]
-        elif re.match("^[NBRQK][a-h][a-h][1-8]$", string=ply_string):  # piece move, ambiguous column
-            piece_rank = ply_string[0]
-            piece_col = ply_string[1]
-            new_col_str = ply_string[2]
-            new_row_str = ply_string[3]
-        elif re.match("^[NBRQK][1-8][a-h][1-8]$", string=ply_string):  # piece move, ambiguous row
-            piece_rank = ply_string[0]
-            piece_row = ply_string[1]
-            new_col_str = ply_string[2]
-            new_row_str = ply_string[3]
-        elif re.match("^[NBRQK][a-h][1-8][a-h][1-8]$", string=ply_string):  # piece move, ambiguous row and column
-            piece_rank = ply_string[0]
-            piece_col = ply_string[1]
-            piece_row = ply_string[2]
-            new_col_str = ply_string[3]
-            new_row_str = ply_string[4]
-        elif re.match("^[NBRQK]x[a-h][1-8]$", string=ply_string):  # piece capture
-            piece_rank = ply_string[0]
-            new_col_str = ply_string[2]
-            new_row_str = ply_string[3]
-        elif re.match("^[NBRQK][a-h]x[a-h][1-8]$", string=ply_string):  # piece capture, ambiguous column:
-            piece_rank = ply_string[0]
-            piece_col = ply_string[1]
-            new_col_str = ply_string[3]
-            new_row_str = ply_string[4]
-        elif re.match("^[NBRQK][1-8]x[a-h][1-8]$", string=ply_string):  # piece capture, ambiguous row:
-            piece_rank = ply_string[0]
-            piece_row = ply_string[1]
-            new_col_str = ply_string[3]
-            new_row_str = ply_string[4]
-        elif re.match("^[NBRQK][a-h][1-8]x[a-h][1-8]$", string=ply_string):  # piece capture, ambiguous row and column:
-            piece_rank = ply_string[0]
-            piece_col = ply_string[1]
-            piece_row = ply_string[2]
-            new_col_str = ply_string[4]
-            new_row_str = ply_string[5]
-        elif re.match("^O-O$|^0-0$|^O-O-O$|^0-0-0$", string=ply_string):  # castle
-            if ply_string == "O-O" or ply_string == "0-0":
-                castle_king_side = True
-            else:
-                castle_queen_side = True
-        else:
-            raise UnrecognisedPlyError(ply_string=ply_string)
-
-        if castle_king_side or castle_queen_side:
-            self._castle(white_to_move=white_to_move, castle_king_side=castle_king_side)
+        if ply.castle_king_side or ply.castle_queen_side:
+            self._castle(white_to_move=white_to_move, castle_king_side=ply.castle_king_side)
             return
-
-        new_col = int(col_names.index(new_col_str))
-        new_row = int(row_names.index(new_row_str))
-        new_position = _Position(row=new_row, col=new_col)
-        is_capture = True if "x" in ply_string else False
 
         candidate_pieces = []
         for row in range(0, 8):
@@ -241,8 +184,8 @@ class _Interpreter:
                 if piece.is_white != white_to_move:  # if piece is the wrong colour, skip
                     continue
                 is_candidate_piece = (
-                        piece.rank == piece_rank
-                        and new_position in piece.get_possible_positions(self._board, ply_number=self._ply_count)
+                        piece.rank == ply.piece_rank
+                        and ply.new_position in piece.get_possible_positions(self._board, ply_number=self._ply_count)
                 )
                 if is_candidate_piece:
                     candidate_pieces.append(piece)
@@ -250,54 +193,54 @@ class _Interpreter:
         if len(candidate_pieces) == 1:
             self._move_piece(
                 piece=candidate_pieces[0],
-                row=new_row,
-                col=new_col,
-                promoted_piece_rank=promoted_piece_rank,
-                is_capture=is_capture
+                row=ply.new_position.row,
+                col=ply.new_position.col,
+                promoted_piece_rank=ply.promoted_piece_rank,
+                is_capture=ply.is_capture
             )
             return
         elif len(candidate_pieces) >= 2:
-            if piece_row is not None and piece_col is not None:
+            if ply.piece_row is not None and ply.piece_col is not None:
                 piece, = [
                     piece for piece in candidate_pieces
-                    if piece.position.name == piece_col + piece_row
+                    if piece.position.name == ply.piece_col + ply.piece_row
                 ]
                 self._move_piece(
                     piece=piece,
-                    row=new_row,
-                    col=new_col,
-                    promoted_piece_rank=promoted_piece_rank,
-                    is_capture=is_capture
+                    row=ply.new_position.row,
+                    col=ply.new_position.col,
+                    promoted_piece_rank=ply.promoted_piece_rank,
+                    is_capture=ply.is_capture
                 )
                 return
-            elif piece_row is not None:
+            elif ply.piece_row is not None:
                 piece, = [
                     piece for piece in candidate_pieces
-                    if piece.position.row == int(row_names.index(piece_row))
+                    if piece.position.row == ply.piece_row_number
                 ]
                 self._move_piece(
                     piece=piece,
-                    row=new_row,
-                    col=new_col,
-                    promoted_piece_rank=promoted_piece_rank,
-                    is_capture=is_capture
+                    row=ply.new_position.row,
+                    col=ply.new_position.col,
+                    promoted_piece_rank=ply.promoted_piece_rank,
+                    is_capture=ply.is_capture
                 )
                 return
-            elif piece_col is not None:
+            elif ply.piece_col is not None:
                 piece, = [
                     piece for piece in candidate_pieces
-                    if piece.position.col == int(col_names.index(piece_col))
+                    if piece.position.col == ply.piece_col_number
                 ]
                 self._move_piece(
                     piece=piece,
-                    row=new_row,
-                    col=new_col,
-                    promoted_piece_rank=promoted_piece_rank,
-                    is_capture=is_capture
+                    row=ply.new_position.row,
+                    col=ply.new_position.col,
+                    promoted_piece_rank=ply.promoted_piece_rank,
+                    is_capture=ply.is_capture
                 )
                 return
 
-        raise InterpreterError(ply_string=ply_string)
+        raise InterpreterError(ply_string=ply.ply_string)
 
     def get_board(self) -> np.ndarray:
         """
@@ -308,24 +251,6 @@ class _Interpreter:
         """
 
         return copy.deepcopy(self._board)
-
-
-class UnrecognisedPlyError(Exception):
-    """
-    Exception raised when a ply string is not recognised by the Interpreter.
-
-    Args:
-        ply_string (str): The unrecognised ply string.
-        message (str): The error message to raise.
-    """
-
-    def __init__(self, ply_string: str, message: str = "Move string is not recognised"):
-        self.ply_string = ply_string
-        self.message = message
-        super().__init__(message)
-
-    def __str__(self):
-        return f"{self.ply_string}: {self.message}"
 
 
 class InterpreterError(Exception):
