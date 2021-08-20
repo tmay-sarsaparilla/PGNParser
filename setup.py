@@ -8,14 +8,14 @@ with open(path.join(directory, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='chessplot',
-    version='1.4',
+    version='1.5',
     license="GPLv3",
     description="Package for visualising chess games",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="Timothy May",
     url="https://github.com/tmay-sarsaparilla/PGNParser",
-    download_url="https://github.com/tmay-sarsaparilla/PGNParser/archive/refs/tags/v1.4-beta.tar.gz",
+    download_url="https://github.com/tmay-sarsaparilla/PGNParser/archive/refs/tags/v1.5-beta.tar.gz",
     keywords=["chess", "pgn", "visualisation", "parser", "gif", "pdf"],
     packages=["chessplot"],
     python_requires=">=3.7",
