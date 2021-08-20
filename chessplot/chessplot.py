@@ -1,11 +1,10 @@
 """Module for the ChessPlot class"""
 
 import numpy as np
-import re
-import datetime
-from typing import Tuple, List, Dict, TypeVar, Generic
+from typing import Tuple, List, TypeVar, Generic
 from PIL import Image, ImageFont, ImageDraw
 from .interpreter import _Interpreter
+from .parser import _Parser, _Metadata
 
 
 T = TypeVar("T")
@@ -15,23 +14,7 @@ class ChessPlot:
     """A class for plots of chess games.
 
     Attributes:
-        _pgn (str): A path to a .pgn file to be plotted.
-        _tags (dict): A set of metadata tags from the input .pgn file.
-        _moves (list): A set of pairs of moves played during the game from the input .pgn file.
-        _fen (str): A FEN string containing information on the starting position of the game.
-        _piece_positions (str): A string denoting the starting position of the pieces.
-        _white_to_move (bool): Indicator of whether it is white's move.
-        _move_count (int): The current full move count of the game.
-        _event (str): The event at which the game took place.
-        _site (str): The location where the game took place.
-        _date (str): The date on which the game took place. Unknown fields are populated with '??'.
-        _event_round (str): The round in which the game took place.
-        _white (str): The name of the player with the white pieces.
-        _black (str): The name of the player with the black pieces.
-        _white_elo (str): The Elo rating of the player with the white pieces.
-        _black_elo (str): The Elo rating of the player with the black pieces.
-        _result (str): The result of the game. Valid results are 1-0, 0-1, or 1/2-1/2.
-        _formatted_date (str): A formatted version of the game date.
+        pgn (str): A path to a .pgn file to be plotted.
         _black_square_colour (str): A hex code for the colour of black squares in the plot.
         _white_square_colour (str): A hex code for the colour of white squares in the plot.
         _board_only (bool): Indicator of whether only the board should be plotted or not.
@@ -45,9 +28,9 @@ class ChessPlot:
         _square_name_font (ImageFont.truetype): A font for drawing the square coordinates on plots.
         _boards (list): A list of boards, one for each of the moves played during the game.
         _frames (list): A list of images, one for each of the moves played during the game.
+        metadata (_Metadata): A collection of metadata about the game.
     """
 
-    __default_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
     __end_states = ["1-0", "0-1", "1/2-1/2"]
 
     def __init__(self, pgn: str) -> None:
@@ -58,24 +41,8 @@ class ChessPlot:
             pgn (str): A path to a .pgn file to be plotted.
         """
 
-        self._pgn = pgn
-        self._tags, self._moves = self._parse_file(file_path=pgn)
-        self._fen = self._get_tag_value(tag_key="FEN", default_value=ChessPlot.__default_fen)
-        (
-            self._piece_positions,
-            self._white_to_move,
-            self._move_count
-        ) = self._parse_fen()
-        self._event = self._get_tag_value(tag_key="Event")
-        self._site = self._get_tag_value(tag_key="Site")
-        self._date = self._get_tag_value(tag_key="Date")
-        self._event_round = self._get_tag_value(tag_key="Round")
-        self._white = self._get_tag_value(tag_key="White", default_value="Unknown")
-        self._black = self._get_tag_value(tag_key="Black", default_value="Unknown")
-        self._white_elo = self._get_tag_value(tag_key="WhiteElo")
-        self._black_elo = self._get_tag_value(tag_key="BlackElo")
-        self._result = self._get_tag_value(tag_key="Result")
-        self._formatted_date = self._format_date()
+        self.pgn = pgn
+        self.metadata: _Metadata
         self._black_square_colour = "#276996"
         self._white_square_colour = "#e2e7ee"
         self._board_only = None
@@ -89,122 +56,10 @@ class ChessPlot:
         self._move_text_font = None
         self._unicode_font = None
         self._square_name_font = None
-        self._boards = self._parse_moves()
+        self._boards = self._create_boards()
         self._frames = []
 
-    @staticmethod
-    def _parse_file(file_path: str) -> Tuple[Dict[str, str], List[List[str]]]:
-        """
-        Parse a given file into a set of metadata tags and a move set.
-
-        Args:
-            file_path (str): A path to the .pgn file to be parsed.
-
-        Returns:
-            tags (dict): A dictionary of metadata tags and their values.
-            moves (list): A list of pairs of ply played during the game.
-
-        Raises:
-            ValueError: If given file is not a .pgn | If file contains no move set
-            FileNotFoundError: If given path is not valid
-        """
-
-        if not file_path.endswith(".pgn"):
-            raise ValueError(f"File {file_path} is not a valid .pgn.")
-        file = open(file_path, "r")
-        tags = {}
-        moves_string = ""
-        for line in file:
-            tag_search = re.search(r"\[(.*)]", line)
-            if tag_search is not None:
-                tag = tag_search.group(1)
-                tag = tag.replace('"', "")
-                key, value = tag.split(" ", 1)
-                tags[key] = value
-            else:  # extract move set
-                moves_string += line
-                if line.endswith(tuple(ChessPlot.__end_states)):
-                    break
-        if not moves_string:
-            raise ValueError(f"File {file_path} contains no move set")
-
-        moves_string = moves_string.replace("\n", " ")
-        moves = [
-            [ply for ply in move.strip().split(" ") if ply != ""]
-            for move in re.split("\\d+\\.", moves_string) if move != ''
-        ]
-        moves = [move for move in moves if move]  # remove empty moves
-
-        return tags, moves
-
-    def _get_tag_value(self, tag_key: str, default_value: str = "") -> str:
-        """
-        Get the value corresponding to a given tag key.
-
-        Args:
-            tag_key (str): The key of the desired tag.
-            default_value (str): The default value in the event that the tag is not present.
-        """
-        try:
-            return self._tags[tag_key]
-        except KeyError:
-            return default_value
-
-    def _parse_fen(self) -> Tuple[str, bool, int]:
-        """
-        Parse a given FEN string and return it's constituent elements.
-
-        A FEN string consists of six parts:
-            - Piece positions from white's perspective.
-            - Active colour ("w" or "b").
-            - Castling availability.
-            - En passant target.
-            - Half-move count.
-            - Full move count.
-
-        For full information, see: https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation.
-
-        Returns:
-            piece_positions (str): A string denoting the position of all pieces on the board.
-            white_to_move (bool): Indicator of whether it is white's move or not.
-            move_number (int): The current move number of the game.
-
-        Raises:
-            ValueError: If the given FEN string is invalid.
-        """
-
-        try:
-            fen_elements = self._fen.split(" ")
-            piece_positions = fen_elements[0]
-            active_colour = fen_elements[1]
-            move_number = fen_elements[5]
-            if active_colour == "w":
-                white_to_move = True
-            else:
-                white_to_move = False
-            return piece_positions, white_to_move, int(move_number)
-        except ValueError:
-            raise ValueError(f"{self._fen} is not a valid FEN string.")
-
-    def _format_date(self) -> str:
-        """
-        Format game date.
-
-        Returns:
-            date (str): A formatted version of the original date field.
-        """
-        year, month, day = self._date.replace(".", "-").split("-")
-        if year == "??":
-            date = None
-        elif month == "??":
-            date = year
-        elif day == "??":
-            date = datetime.date(int(year), int(month), 1).strftime("%B %Y")
-        else:
-            date = datetime.date(int(year), int(month), int(day)).strftime("%A %d %B %Y")
-        return date
-
-    def _parse_moves(self) -> List[Tuple[str, np.ndarray]]:
+    def _create_boards(self) -> List[Tuple[str, np.ndarray]]:
         """
         Parse and execute a set of moves.
 
@@ -215,23 +70,27 @@ class ChessPlot:
             boards (list): A list of game boards
         """
 
-        interpreter = _Interpreter(piece_positions=self._piece_positions)
+        parser = _Parser()
+        self.metadata, moves = parser.parse_file(file_path=self.pgn, end_states=ChessPlot.__end_states)
+        piece_positions, white_to_move, move_count = parser.parse_fen(fen=self.metadata.fen)
+
+        interpreter = _Interpreter(piece_positions=piece_positions)
         boards = [("", interpreter.get_board())]  # add starting position image
 
-        for pair in self._moves:
+        for pair in moves:
             for ply_string in pair:
                 if ply_string in ChessPlot.__end_states:
                     break
-                if self._white_to_move:
-                    display_string = f"{self._move_count}. {ply_string}"
+                if white_to_move:
+                    display_string = f"{move_count}. {ply_string}"
                 else:
-                    display_string = f"{self._move_count}... {ply_string}"
+                    display_string = f"{move_count}... {ply_string}"
 
-                ply = interpreter.parse_ply_string(ply_string=ply_string)
-                interpreter.execute_ply(ply=ply, white_to_move=self._white_to_move)
+                ply = parser.parse_ply_string(ply_string=ply_string)
+                interpreter.execute_ply(ply=ply, white_to_move=white_to_move)
                 boards.append((display_string, interpreter.get_board()))
-                self._white_to_move = not self._white_to_move
-            self._move_count += 1
+                white_to_move = not white_to_move
+            move_count += 1
 
         return boards
 
@@ -386,10 +245,11 @@ class ChessPlot:
         header_centre = header_width / 2
 
         # title text
-        if self._white_elo != "" and self._black_elo != "":
-            title_text = f"{self._white} ({self._white_elo}) - {self._black} ({self._black_elo})"
+        if self.metadata.white_elo != "" and self.metadata.black_elo != "":
+            title_text = f"{self.metadata.white} ({self.metadata.white_elo}) - " \
+                         f"{self.metadata.black} ({self.metadata.black_elo})"
         else:
-            title_text = f"{self._white} - {self._black}"
+            title_text = f"{self.metadata.white} - {self.metadata.black}"
 
         title_font = self._scale_font(
             text=title_text,
@@ -407,7 +267,8 @@ class ChessPlot:
         )
 
         # sub-title text
-        sub_title_text = f"{self._site}, {self._formatted_date}" if self._formatted_date is not None else self._site
+        sub_title_text = f"{self.metadata.site}, {self.metadata.date}" \
+            if self.metadata.date is not None else self.metadata.site
         sub_title_font = self._scale_font(
             text=sub_title_text,
             font_name="ariali.ttf",
@@ -424,7 +285,7 @@ class ChessPlot:
         )
 
         # result text
-        result_text = self._result
+        result_text = self.metadata.result
         result_font = self._scale_font(
             text=result_text,
             font_name="arialbd.ttf",
@@ -594,7 +455,7 @@ class ChessPlot:
             self._draw_frames()
 
         if save_path is None:
-            save_path = self._pgn.replace(".pgn", ".gif")
+            save_path = self.pgn.replace(".pgn", ".gif")
 
         save_images = self._frames + [self._frames[-1]]  # add last element twice before loop restarts
         save_images[0].save(
@@ -631,7 +492,7 @@ class ChessPlot:
             self._draw_frames()
 
         if save_path is None:
-            save_path = self._pgn.replace(".pgn", ".pdf")
+            save_path = self.pgn.replace(".pgn", ".pdf")
 
         save_images = self._frames
         save_images[0].save(
@@ -668,7 +529,7 @@ class ChessPlot:
             self._draw_frames()
 
         if save_path is None:
-            save_path = self._pgn.replace(".pgn", ".png")
+            save_path = self.pgn.replace(".pgn", ".png")
 
         image = self._frames[0]
         image.save(fp=save_path, format="png")

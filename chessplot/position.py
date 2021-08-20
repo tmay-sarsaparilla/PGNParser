@@ -28,6 +28,15 @@ class _Position:
         self._name = self._set_name()
         self._is_legal = self._check_legality()
 
+    @classmethod
+    def from_name(cls, name: str):
+        """Class method for constructing a _Position from its name."""
+
+        col_str, row_str = list(name)
+        row = cls.__row_names.index(row_str)
+        col = cls.__col_names.index(col_str)
+        return cls(row=row, col=col)
+
     @property
     def row(self) -> int:
         """Get row."""

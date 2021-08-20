@@ -14,8 +14,7 @@ class _Ply:
             piece_rank: str = None,
             piece_col: str = None,
             piece_row: str = None,
-            new_col: str = None,
-            new_row: str = None,
+            new_position_name: str = None,
             promoted_piece_rank: str = None,
             castle_king_side: bool = False,
             castle_queen_side: bool = False,
@@ -27,11 +26,8 @@ class _Ply:
         self.piece_col = piece_col
         self.piece_row_number = _Ply.__row_names.index(self.piece_row) if self.piece_row is not None else None
         self.piece_col_number = _Ply.__col_names.index(self.piece_col) if self.piece_col is not None else None
-        if new_row is not None and new_col is not None:
-            self.new_position = _Position(
-                row=_Ply.__row_names.index(new_row),
-                col=_Ply.__col_names.index(new_col)
-            )
+        if new_position_name is not None:
+            self.new_position = _Position.from_name(name=new_position_name)
         else:
             self.new_position = None
         self.promoted_piece_rank = promoted_piece_rank

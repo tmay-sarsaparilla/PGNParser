@@ -128,37 +128,6 @@ class _Interpreter:
 
         return
 
-    @staticmethod
-    def parse_ply_string(ply_string: str) -> _Ply:
-
-        ply_elements = {"ply_string": ply_string}
-
-        if re.match("^O-O$|^0-0$", string=ply_string):  # castle king-side
-            ply_elements["castle_king_side"] = True
-            return _Ply(**ply_elements)
-
-        if re.match("^O-O-O$|^0-0-0$", string=ply_string):  # castle queen-side
-            ply_elements["castle_queen_side"] = True
-            return _Ply(**ply_elements)
-
-        match = re.match("^([NBRKQ]?)([a-h]?)([1-8]?)(x?)([a-h][1-8])=?([NBRQ]?)", ply_string)  # standard move
-
-        if not match:
-            raise UnrecognisedPlyError(ply_string=ply_string)
-
-        ply_elements["new_col"], ply_elements["new_row"] = list(match.group(5))
-        ply_elements["piece_rank"] = match.group(1) if match.group(1) else "P"
-        if match.group(2):  # set if optional column identifier is provided
-            ply_elements["piece_col"] = match.group(2)
-        if match.group(3):  # set if optional row identifier is provided
-            ply_elements["piece_row"] = match.group(3)
-        if match.group(4):  # set if ply contains a capture indicator
-            ply_elements["is_capture"] = True
-        if match.group(6):  # set if ply contains a piece promotion
-            ply_elements["promoted_piece_rank"] = match.group(6)
-
-        return _Ply(**ply_elements)
-
     def execute_ply(self, ply: _Ply, white_to_move: bool) -> None:
         """
         Execute a given ply.
