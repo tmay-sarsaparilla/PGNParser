@@ -6,11 +6,29 @@ from .ply import _Ply, UnrecognisedPlyError
 
 
 class _Metadata:
-    """Class for representing a set of PGN tag metadata."""
+    """Class for representing a set of PGN tag metadata for a particular game.
+
+    Attributes:
+        event (str): The event at which the game was played.
+        site (str): The location at which the game was played.
+        date (str): The date on which the game was played.
+        event_round (str): The round of the event in which the game was played.
+        white (str): The name of the player with the white pieces.
+        black (str): The name of the player with the black pieces.
+        white_elo (str): The Elo rating of the player with the white pieces.
+        black_elo (str): The Elo rating of the player with the black pieces.
+        result (str): The result of the game.
+        fen (str): The FEN string for the start of the game.
+    """
 
     __default_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
     def __init__(self, tags: Dict[str, str] = None):
+        """Constructor method for the _Metadata class.
+
+        Args:
+            tags (dict): A collection of metadata tags from a .pgn file.
+        """
 
         if tags is None:
             tags = {}

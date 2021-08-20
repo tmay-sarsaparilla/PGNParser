@@ -389,12 +389,10 @@ class ChessPlot:
             flip_perspective (bool): Indicator of whether the board perspective should be flipped.
             start_frame (int): The frame on which the plot should start.
             end_frame (int): The frame on which the plot should end.
+            theme (str): The theme to be used for the plot.
 
         Returns:
             settings_change (bool): Indicator of whether any settings have changed.
-
-        Raises:
-            ValueError: If given plot size is too small or too large
         """
 
         new_settings = _Settings(**kwargs)
@@ -425,6 +423,7 @@ class ChessPlot:
             flip_perspective (bool): Indicator of whether the board perspective should be flipped (default False).
             start_frame (int): The frame on which the gif should begin (default 0).
             end_frame (int) The frame on which the gif should end (default None).
+            theme (str): The theme to be used for the plot.
         """
 
         settings_change = self._update_plot_settings(**kwargs)
@@ -462,6 +461,7 @@ class ChessPlot:
             flip_perspective (bool): Indicator of whether the board perspective should be flipped (default False).
             start_frame (int): The frame on which the gif should begin (default 0).
             end_frame (int) The frame on which the gif should end (default None).
+            theme (str): The theme to be used for the plot.
         """
 
         settings_change = self._update_plot_settings(**kwargs)
@@ -497,6 +497,7 @@ class ChessPlot:
             board_only (bool): Indicator of whether only the board should be plotted (default False).
             display_notation (bool): Indicator of whether to display move notation on the plot (default True).
             flip_perspective (bool): Indicator of whether the board perspective should be flipped (default False).
+            theme (str): The theme to be used for the plot.
         """
 
         kwargs["start_frame"] = frame

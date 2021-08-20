@@ -17,6 +17,7 @@ class _Settings:
         "classic": _Theme(black_square_colour="#b06c4a", white_square_colour="#f7efeb"),
         "blue": _Theme(black_square_colour="#276996", white_square_colour="#e2e7ee"),
         "green": _Theme(black_square_colour="#5a9946", white_square_colour="#ebead8"),
+        "grey-scale": _Theme(black_square_colour="#4f4f4f", white_square_colour="#d9d9d9"),
     }
 
     def __init__(
@@ -28,7 +29,7 @@ class _Settings:
             start_frame: int = 0,
             end_frame: int = None,
             theme: str = "blue"
-    ):
+    ) -> None:
         """
         Constructor method for the _Settings class.
 
@@ -40,6 +41,9 @@ class _Settings:
             start_frame (int): Frame the plot should start on (default 0).
             end_frame (int): Frame the plot should end on (default None).
             theme (_Theme): Theme to use for the plot (default "blue").
+
+        Raises:
+            ValueError: If given plot_size is too small or too large.
         """
 
         try:

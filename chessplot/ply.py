@@ -3,7 +3,21 @@ from .position import _Position
 
 
 class _Ply:
-    """Class representing a ply."""
+    """Class representing a ply.
+
+    Attributes:
+        ply_string (str): The string representation of the ply.
+        piece_rank (str): The rank of the piece being moved.
+        piece_col (str): The initial column of the piece being moved.
+        piece_row (str): The initial row of the piece being moved.
+        piece_row_number (int): The initial row number of the piece being moved.
+        piece_col_number (int): The initial column number of the piece being moved.
+        new_position (_Position): The new position of the piece.
+        promoted_piece_rank (str): The rank of the piece promoted to during the move (if any).
+        castle_king_side (bool): Indicator of whether the ply is a king-side castle.
+        castle_queen_side (bool): Indicator of whether the ply is a queen-side castle.
+        is_capture (bool): Indicator of whether the ply is a capture.
+    """
 
     __row_names = "12345678"
     __col_names = "hgfedcba"
@@ -20,6 +34,19 @@ class _Ply:
             castle_queen_side: bool = False,
             is_capture: bool = False
     ) -> None:
+        """Constructor method for the _Ply class.
+
+        Args:
+            ply_string (str): The string representation of the ply.
+            piece_rank (str): The rank of the piece being moved (default None).
+            piece_col (str): The initial column of the piece being moved (default None).
+            piece_row (str): The initial row of the piece being moved (default None).
+            new_position_name (str): The name of the new position of the piece (default None).
+            promoted_piece_rank (str): The rank of the piece promoted to during the move (if any) (default None).
+            castle_king_side (bool): Indicator of whether the ply is a king-side castle (default False).
+            castle_queen_side (bool): Indicator of whether the ply is a queen-side castle (default False).
+            is_capture (bool): Indicator of whether the ply is a capture (default False).
+        """
         self.ply_string = ply_string
         self.piece_rank = piece_rank
         self.piece_row = piece_row
