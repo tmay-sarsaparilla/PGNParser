@@ -4,9 +4,8 @@ Module containing all classes used by the chessplot package.
 
 import numpy as np
 import copy
-import re
 from .piece import _Piece
-from .ply import _Ply, UnrecognisedPlyError
+from .ply import _Ply
 
 
 class _Interpreter:

@@ -10,11 +10,14 @@ class _Metadata:
 
     __default_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
-    def __init__(self, tags: Dict[str, str]):
+    def __init__(self, tags: Dict[str, str] = None):
+
+        if tags is None:
+            tags = {}
 
         self.event = tags.pop("Event", "")
         self.site = tags.pop("Site", "")
-        self.date = self._format_date(date=tags.pop("Date", ""))
+        self.date = self._format_date(date=tags.pop("Date", "??.??.??"))
         self.event_round = tags.pop("Round", "")
         self.white = tags.pop("White", "Unknown")
         self.black = tags.pop("Black", "Unknown")

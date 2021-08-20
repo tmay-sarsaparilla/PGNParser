@@ -5,6 +5,7 @@ from typing import Tuple, List, TypeVar, Generic
 from PIL import Image, ImageFont, ImageDraw
 from .interpreter import _Interpreter
 from .parser import _Parser, _Metadata
+from .settings import _Settings
 
 
 T = TypeVar("T")
@@ -15,20 +16,14 @@ class ChessPlot:
 
     Attributes:
         pgn (str): A path to a .pgn file to be plotted.
-        _black_square_colour (str): A hex code for the colour of black squares in the plot.
-        _white_square_colour (str): A hex code for the colour of white squares in the plot.
-        _board_only (bool): Indicator of whether only the board should be plotted or not.
-        _flip_perspective (bool): Indicator of whether the view perspective of the game should be flipped
-        _plot_size (int): The size of the plot to be produced.
-        _square_width (int): The width of squares on the board in the final plot.
-        _display_notation (bool): Indicator of whether to display move notation on plots.
+        metadata (_Metadata): A collection of metadata about the game.
+        _settings (_Settings): A collection of settings for the plots to be generated.
         _header_image (Image.Image): A header image for each frame of a plot.
         _move_text_font (ImageFont.truetype): A font for drawing move notations on plots.
         _unicode_font (ImageFont.truetype): A font for drawing pieces on the board.
         _square_name_font (ImageFont.truetype): A font for drawing the square coordinates on plots.
         _boards (list): A list of boards, one for each of the moves played during the game.
         _frames (list): A list of images, one for each of the moves played during the game.
-        metadata (_Metadata): A collection of metadata about the game.
     """
 
     __end_states = ["1-0", "0-1", "1/2-1/2"]
@@ -42,16 +37,8 @@ class ChessPlot:
         """
 
         self.pgn = pgn
-        self.metadata: _Metadata
-        self._black_square_colour = "#276996"
-        self._white_square_colour = "#e2e7ee"
-        self._board_only = None
-        self._flip_perspective = None
-        self._plot_size = None
-        self._square_width = None
-        self._display_notation = None
-        self._start_frame = None
-        self._end_frame = None
+        self.metadata = _Metadata()
+        self._settings = _Settings()
         self._header_image = None
         self._move_text_font = None
         self._unicode_font = None
@@ -135,13 +122,17 @@ class ChessPlot:
             image (Image.Image): An image of the board.
         """
 
-        image = Image.new(mode="RGB", size=(self._square_width * 10, self._square_width * 10), color="white")
+        image = Image.new(
+            mode="RGB",
+            size=(self._settings.square_width * 10, self._settings.square_width * 10),
+            color="white"
+        )
         draw = ImageDraw.ImageDraw(im=image)
 
-        x_origin, y_origin = self._square_width, self._square_width
+        x_origin, y_origin = self._settings.square_width, self._settings.square_width
 
         # move text
-        if self._display_notation:
+        if self._settings.display_notation:
             draw.text(
                 xy=(x_origin, y_origin * 0.5),
                 text=ply_string,
@@ -150,21 +141,28 @@ class ChessPlot:
                 fill="black"
             )
 
-        if not self._flip_perspective:
+        if not self._settings.flip_perspective:
             board = np.flip(board)
 
         for row in range(0, 8):
             for col in range(0, 8):
                 piece = board[row, col]
-                x = x_origin + self._square_width * col
-                y = y_origin + self._square_width * row
-                square_colour = self._white_square_colour if (row + col) % 2 == 0 else self._black_square_colour
-                draw.rectangle(xy=((x, y), (x + self._square_width, y + self._square_width)), fill=square_colour)
+                x = x_origin + self._settings.square_width * col
+                y = y_origin + self._settings.square_width * row
+                square_colour = self._settings.theme.white_square_colour if (row + col) % 2 == 0 \
+                    else self._settings.theme.black_square_colour
+                draw.rectangle(
+                    xy=(
+                        (x, y),
+                        (x + self._settings.square_width, y + self._settings.square_width)
+                    ),
+                    fill=square_colour
+                )
                 if piece is not None:
                     draw.text(  # add outline to piece
                         xy=(
-                            x_origin + self._square_width * col + self._square_width * 0.5,
-                            y_origin + self._square_width * row + self._square_width * 0.5
+                            x_origin + self._settings.square_width * col + self._settings.square_width * 0.5,
+                            y_origin + self._settings.square_width * row + self._settings.square_width * 0.5
                         ),
                         text=piece.unicode,
                         anchor="mm",
@@ -175,8 +173,8 @@ class ChessPlot:
                     )
                     draw.text(
                         xy=(
-                            x_origin + self._square_width * col + self._square_width * 0.5,
-                            y_origin + self._square_width * row + self._square_width * 0.5
+                            x_origin + self._settings.square_width * col + self._settings.square_width * 0.5,
+                            y_origin + self._settings.square_width * row + self._settings.square_width * 0.5
                         ),
                         text=piece.unicode,
                         anchor="mm",
@@ -185,14 +183,14 @@ class ChessPlot:
                         fill="black",
                     )
                 if col == 0:
-                    if self._flip_perspective:
+                    if self._settings.flip_perspective:
                         row_text = "12345678"[row]
                     else:
                         row_text = "12345678"[7 - row]
                     draw.text(
                         xy=(
-                            x_origin - self._square_width * 0.5,
-                            y_origin + self._square_width * row + self._square_width * 0.5
+                            x_origin - self._settings.square_width * 0.5,
+                            y_origin + self._settings.square_width * row + self._settings.square_width * 0.5
                         ),
                         text=row_text,
                         anchor="mm",
@@ -202,14 +200,14 @@ class ChessPlot:
                         stroke_width=0
                     )
                 if row == 7:
-                    if self._flip_perspective:
+                    if self._settings.flip_perspective:
                         col_text = "abcdefgh"[7 - col]
                     else:
                         col_text = "abcdefgh"[col]
                     draw.text(
                         xy=(
-                            x_origin + self._square_width * col + self._square_width * 0.5,
-                            y_origin + self._square_width * 8 + self._square_width * 0.5
+                            x_origin + self._settings.square_width * col + self._settings.square_width * 0.5,
+                            y_origin + self._settings.square_width * 8 + self._settings.square_width * 0.5
                         ),
                         text=col_text,
                         anchor="mm",
@@ -320,12 +318,16 @@ class ChessPlot:
             ply_string=ply_string,
         )
 
-        if self._board_only:
+        if not self._settings.display_header:
             return board_image
 
         header_height = self._header_image.size[1]
 
-        frame = Image.new(mode="RGB", size=(self._plot_size, self._plot_size + header_height), color="white")
+        frame = Image.new(
+            mode="RGB",
+            size=(self._settings.plot_size, self._settings.plot_size + header_height),
+            color="white"
+        )
         frame.paste(board_image, (0, header_height))
         frame.paste(self._header_image, (0, 0))
 
@@ -336,10 +338,10 @@ class ChessPlot:
         Draw a list of frames, one for each ply played in the game.
         """
 
-        if not self._board_only:
-            header_height = int(self._plot_size * 0.15)
+        if self._settings.display_header:
+            header_height = int(self._settings.plot_size * 0.15)
             self._header_image = self._draw_header(
-                header_width=self._plot_size,
+                header_width=self._settings.plot_size,
                 header_height=header_height,
             )
 
@@ -347,25 +349,25 @@ class ChessPlot:
         self._square_name_font = self._scale_font(
             text="a",
             font_name="arial.ttf",
-            max_width=int(self._square_width * 0.4),
-            max_height=int(self._square_width * 0.4)
+            max_width=int(self._settings.square_width * 0.4),
+            max_height=int(self._settings.square_width * 0.4)
         )
         self._unicode_font = self._scale_font(
             text="♔",
             font_name="seguisym.ttf",
-            max_width=self._square_width,
-            max_height=self._square_width
+            max_width=self._settings.square_width,
+            max_height=self._settings.square_width
         )
-        if self._display_notation:
+        if self._settings.display_notation:
             self._move_text_font = self._scale_font(
                 text="1. e4",
                 font_name="arial.ttf",
-                max_width=int(self._square_width * 0.8),
-                max_height=int(self._square_width * 0.8)
+                max_width=int(self._settings.square_width * 0.8),
+                max_height=int(self._settings.square_width * 0.8)
             )
 
         self._frames = []
-        for ply_string, board in self._boards[self._start_frame:self._end_frame + 1]:
+        for ply_string, board in self._boards[self._settings.start_frame:self._settings.end_frame + 1]:
             self._frames.append(self._draw(board=board, ply_string=ply_string))
 
         return
@@ -395,40 +397,16 @@ class ChessPlot:
             ValueError: If given plot size is too small or too large
         """
 
-        settings_change = False
+        new_settings = _Settings(**kwargs)
+        if new_settings.end_frame is None:
+            new_settings.update_end_frame(end_frame=len(self._boards) - 1)
 
-        plot_size = kwargs.pop("plot_size", 800)
-        board_only = kwargs.pop("board_only", False)
-        display_notation = kwargs.pop("display_notation", True)
-        flip_perspective = kwargs.pop("flip_perspective", False)
-        start_frame = kwargs.pop("start_frame", 0)
-        end_frame = kwargs.pop("end_frame", None)
+        if new_settings == self._settings:
+            return False
 
-        end_frame = end_frame if end_frame is not None else len(self._boards) - 1
+        self._settings = new_settings
 
-        if plot_size != self._plot_size or self._plot_size is None:
-            if not 400 <= plot_size <= 1000:
-                raise ValueError("Please choose a plot size between 400 and 1000.")
-            self._plot_size = plot_size
-            self._square_width = int(plot_size / 10)
-            settings_change = True
-        if board_only != self._board_only or self._board_only is None:
-            self._board_only = board_only
-            settings_change = True
-        if display_notation != self._display_notation or self._display_notation is None:
-            self._display_notation = display_notation
-            settings_change = True
-        if flip_perspective != self._flip_perspective or self._flip_perspective is None:
-            self._flip_perspective = flip_perspective
-            settings_change = True
-        if start_frame != self._start_frame or self._start_frame is None:
-            self._start_frame = start_frame
-            settings_change = True
-        if end_frame != self._end_frame or self._end_frame is None:
-            self._end_frame = end_frame
-            settings_change = True
-
-        return settings_change
+        return True
 
     def to_gif(self, save_path: str = None, duration: int = 2000, **kwargs: Generic[T]) -> None:
         """
