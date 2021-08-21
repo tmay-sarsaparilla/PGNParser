@@ -77,12 +77,5 @@ fabric.properties
 chessplot/__pycache__/
 /dist
 /build
-test.py
 /chessplot.egg-info
 /MANIFEST
-/test_match.pgn
-/test_match.gif
-/test_match.pdf
-/test_match_02.pgn
-/test_match_02.gif
-/test_match.png

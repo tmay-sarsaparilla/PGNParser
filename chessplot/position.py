@@ -1,5 +1,7 @@
 """Module for defining positions"""
 
+from typing import Optional
+
 
 class _Position:
     """
@@ -30,12 +32,22 @@ class _Position:
 
     @classmethod
     def from_name(cls, name: str):
-        """Class method for constructing a _Position from its name."""
+        """Class method for constructing a _Position from its name.
 
-        col_str, row_str = list(name)
-        row = cls.__row_names.index(row_str)
-        col = cls.__col_names.index(col_str)
-        return cls(row=row, col=col)
+        Args:
+            name (str): Name of the position to be created.
+
+        Raises:
+            ValueError: If the given name is not valid.
+        """
+
+        try:
+            col_str, row_str = list(name)
+            row = cls.__row_names.index(row_str)
+            col = cls.__col_names.index(col_str)
+            return cls(row=row, col=col)
+        except (IndexError, TypeError):
+            raise ValueError(f"{name} is not a recognised position name.")
 
     @property
     def row(self) -> int:
@@ -69,12 +81,12 @@ class _Position:
         else:
             return False
 
-    def _set_name(self) -> str:
+    def _set_name(self) -> Optional[str]:
         """Set the name of the position."""
         try:
             return self.__col_names[self.col] + self.__row_names[self.row]
         except IndexError:
-            return ""
+            return None
 
     def _check_legality(self) -> bool:
         """

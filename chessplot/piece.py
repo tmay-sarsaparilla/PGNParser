@@ -56,8 +56,12 @@ class _Piece:
             name (str): Name of the piece e.g. 'P' is a white pawn.
             row (int): Row number of the piece's position.
             col (int): Column number of the piece's position.
+
+        Raises:
+            ValueError: If given name is not a valid piece name.
         """
-        assert name.upper() in _Piece.__valid_piece_names, f"{name} is not a valid piece name"
+        if name.upper() not in _Piece.__valid_piece_names:
+            raise ValueError(f"{name} is not a valid piece name")
         self._name = name
         self._is_white = True if name == name.upper() else False
         self._rank = name.upper()
