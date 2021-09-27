@@ -48,3 +48,11 @@ class TestPiece:
 
     def test_get_situational_directions_pawn(self):
         pass
+
+    def test_get_possible_positions(self):
+        """Test that the get_possible_positions method returns the correct list of positions."""
+        piece = _Piece(name="P", row=1, col=0)
+        board = np.empty((8, 8), dtype=_Piece)
+        board[1, 0] = piece
+        possible_positions = piece.get_possible_positions(board=board, ply_number=1)
+        assert possible_positions == [_Position(row=2, col=0), _Position(row=3, col=0)]

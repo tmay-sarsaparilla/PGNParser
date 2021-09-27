@@ -90,20 +90,22 @@ class _Parser:
 
         if not file_path.endswith(".pgn"):
             raise ValueError(f"File {file_path} is not a valid .pgn.")
-        file = open(file_path, "r")
+
         tags = {}
         moves_string = ""
-        for line in file:
-            tag_search = re.search(r"\[(.*)]", line)
-            if tag_search is not None:
-                tag = tag_search.group(1)
-                tag = tag.replace('"', "")
-                key, value = tag.split(" ", 1)
-                tags[key] = value
-            else:  # extract move set
-                moves_string += line
-                if line.endswith(tuple(end_states)):
-                    break
+
+        with open(file_path, "r") as file:
+            for line in file:
+                tag_search = re.search(r"\[(.*)]", line)
+                if tag_search is not None:
+                    tag = tag_search.group(1)
+                    tag = tag.replace('"', "")
+                    key, value = tag.split(" ", 1)
+                    tags[key] = value
+                else:  # extract move set
+                    moves_string += line
+                    if line.endswith(tuple(end_states)):
+                        break
         if not moves_string:
             raise ValueError(f"File {file_path} contains no move set")
 
